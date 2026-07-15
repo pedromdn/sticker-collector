@@ -1,0 +1,61 @@
+const COUNTRY_FLAGS: Record<string, string> = {
+	Mexico: '🇲🇽',
+	'South Africa': '🇿🇦',
+	'South Korea': '🇰🇷',
+	Czechia: '🇨🇿',
+	Canada: '🇨🇦',
+	'Bosnia and Herzegovina': '🇧🇦',
+	Qatar: '🇶🇦',
+	Switzerland: '🇨🇭',
+	Brazil: '🇧🇷',
+	Morocco: '🇲🇦',
+	Haiti: '🇭🇹',
+	Scotland: '\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}',
+	USA: '🇺🇸',
+	Paraguay: '🇵🇾',
+	Australia: '🇦🇺',
+	Türkiye: '🇹🇷',
+	Germany: '🇩🇪',
+	Curaçao: '🇨🇼',
+	'Ivory Coast': '🇨🇮',
+	Ecuador: '🇪🇨',
+	Netherlands: '🇳🇱',
+	Japan: '🇯🇵',
+	Sweden: '🇸🇪',
+	Tunisia: '🇹🇳',
+	Belgium: '🇧🇪',
+	Egypt: '🇪🇬',
+	Iran: '🇮🇷',
+	'New Zealand': '🇳🇿',
+	Spain: '🇪🇸',
+	'Cape Verde': '🇨🇻',
+	'Saudi Arabia': '🇸🇦',
+	Uruguay: '🇺🇾',
+	France: '🇫🇷',
+	Senegal: '🇸🇳',
+	Iraq: '🇮🇶',
+	Norway: '🇳🇴',
+	Argentina: '🇦🇷',
+	Algeria: '🇩🇿',
+	Austria: '🇦🇹',
+	Jordan: '🇯🇴',
+	Portugal: '🇵🇹',
+	'Congo DR': '🇨🇩',
+	Uzbekistan: '🇺🇿',
+	Colombia: '🇨🇴',
+	England: '\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}',
+	Croatia: '🇭🇷',
+	Ghana: '🇬🇭',
+	Panama: '🇵🇦'
+};
+
+const SPECIAL_FLAGS: Record<string, string> = {
+	'We Are Panini': '⭐',
+	'FIFA World Cup 2026': '🏆',
+	'Host Countries and Cities': '🇨🇦🇲🇽🇺🇸',
+	'FIFA World Cup History': '📜'
+};
+
+export function getTeamFlag(team: string): string {
+	return COUNTRY_FLAGS[team] ?? SPECIAL_FLAGS[team] ?? '⚽';
+}

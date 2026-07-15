@@ -1,0 +1,30 @@
+{
+	"name": "sticker-collector",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"seed:generate": "node scripts/generate-seed.mjs"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-cloudflare": "^4.8.0",
+		"@sveltejs/kit": "^2.15.0",
+		"@sveltejs/vite-plugin-svelte": "^4.0.0",
+		"@tailwindcss/forms": "^0.5.9",
+		"autoprefixer": "^10.4.20",
+		"postcss": "^8.4.49",
+		"svelte": "^5.16.0",
+		"svelte-check": "^4.1.1",
+		"tailwindcss": "^3.4.17",
+		"typescript": "^5.7.2",
+		"vite": "^5.4.11"
+	},
+	"dependencies": {
+		"@supabase/ssr": "^0.5.2",
+		"@supabase/supabase-js": "^2.47.10"
+	}
+}
