@@ -11,7 +11,15 @@
 	let query = $state('');
 	let statusFilter = $state<StatusFilter>('all');
 	let errorMessage = $state('');
-	let openTeams = new SvelteSet<string>();
+	// Special-variant stickers (GER10s, etc.) live in their own section, so
+	// the same team can show up as two separate cards (e.g. "Germany" in
+	// Grupo E, and "Germany" again under Especiales). Card identity is the
+	// (section, team) pair, not the team alone.
+	let openCards = new SvelteSet<string>();
+
+	function cardKey(sectionKey: SectionKey, team: string) {
+		return `${sectionKey}::${team}`;
+	}
 
 	const pendingTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -60,20 +68,20 @@
 		scheduleSave(item.code, item.quantity);
 	}
 
-	function toggleTeam(team: string) {
-		if (openTeams.has(team)) {
-			openTeams.delete(team);
+	function toggleCard(key: string) {
+		if (openCards.has(key)) {
+			openCards.delete(key);
 		} else {
-			openTeams.add(team);
+			openCards.add(key);
 		}
 	}
 
 	function expandAll() {
-		for (const team of teamStats.keys()) openTeams.add(team);
+		for (const key of cardStats.keys()) openCards.add(key);
 	}
 
 	function collapseAll() {
-		openTeams.clear();
+		openCards.clear();
 	}
 
 	let totalCount = $derived(items.length);
@@ -81,25 +89,26 @@
 	let dupCount = $derived(items.reduce((sum, i) => sum + Math.max(0, i.quantity - 1), 0));
 	let globalPct = $derived(totalCount === 0 ? 0 : Math.round((haveCount / totalCount) * 100));
 
-	let teamStats = $derived.by(() => {
+	// Keyed by (section, team) since a team can have cards in two sections.
+	let cardStats = $derived.by(() => {
 		const map = new Map<string, { have: number; total: number }>();
 		for (const item of items) {
-			const stats = map.get(item.team) ?? { have: 0, total: 0 };
+			const key = cardKey(getSectionKey(item.team, item.code), item.team);
+			const stats = map.get(key) ?? { have: 0, total: 0 };
 			stats.total += 1;
 			if (item.quantity > 0) stats.have += 1;
-			map.set(item.team, stats);
+			map.set(key, stats);
 		}
 		return map;
 	});
 
-	// Aggregate team stats up into section (intro / group / history) stats.
 	let sectionStats = $derived.by(() => {
 		const map = new Map<SectionKey, { have: number; total: number }>();
-		for (const [team, stats] of teamStats) {
-			const key = getSectionKey(team);
+		for (const item of items) {
+			const key = getSectionKey(item.team, item.code);
 			const agg = map.get(key) ?? { have: 0, total: 0 };
-			agg.have += stats.have;
-			agg.total += stats.total;
+			agg.total += 1;
+			if (item.quantity > 0) agg.have += 1;
 			map.set(key, agg);
 		}
 		return map;
@@ -118,42 +127,39 @@
 		});
 	});
 
-	// Teams with a search match auto-expand, independent of "tengo/falta" so
-	// toggling a sticker never collapses the section you're looking at.
-	let teamsMatchingQuery = $derived.by(() => {
+	// Cards with a search match auto-expand, independent of "tengo/falta" so
+	// toggling a sticker never collapses the card you're looking at.
+	let cardsMatchingQuery = $derived.by(() => {
 		const q = query.trim().toLowerCase();
 		const set = new Set<string>();
 		if (q === '') return set;
 		for (const item of items) {
 			if (item.name.toLowerCase().includes(q) || item.code.toLowerCase().includes(q)) {
-				set.add(item.team);
+				set.add(cardKey(getSectionKey(item.team, item.code), item.team));
 			}
 		}
 		return set;
 	});
 
-	let teamGroups = $derived.by(() => {
-		const map = new Map<string, StickerItem[]>();
-		for (const item of filtered) {
-			if (!map.has(item.team)) map.set(item.team, []);
-			map.get(item.team)!.push(item);
-		}
-		return [...map.entries()];
-	});
-
-	// Two-level layout: World Cup section (intro / Group A-L / history) as a
-	// plain heading, teams underneath as the actual collapsible units.
+	// Two-level layout: World Cup section (intro / Group A-L / history /
+	// special) as a plain heading, teams underneath as the actual
+	// collapsible cards.
 	let sections = $derived.by(() => {
-		const bySection = new Map<SectionKey, { team: string; items: StickerItem[] }[]>();
-		for (const [team, teamItems] of teamGroups) {
-			const key = getSectionKey(team);
-			if (!bySection.has(key)) bySection.set(key, []);
-			bySection.get(key)!.push({ team, items: teamItems });
+		const bySection = new Map<SectionKey, Map<string, StickerItem[]>>();
+		for (const item of filtered) {
+			const sectionKey = getSectionKey(item.team, item.code);
+			if (!bySection.has(sectionKey)) bySection.set(sectionKey, new Map());
+			const teamsInSection = bySection.get(sectionKey)!;
+			if (!teamsInSection.has(item.team)) teamsInSection.set(item.team, []);
+			teamsInSection.get(item.team)!.push(item);
 		}
 		return SECTION_ORDER.filter((key) => bySection.has(key)).map((key) => ({
 			key,
 			label: getSectionLabel(key),
-			teams: bySection.get(key)!
+			teams: [...bySection.get(key)!.entries()].map(([team, teamItems]) => ({
+				team,
+				items: teamItems
+			}))
 		}));
 	});
 </script>
@@ -219,14 +225,15 @@
 
 			<div class="space-y-2">
 				{#each section.teams as { team, items: teamItems } (team)}
-					{@const teamStat = teamStats.get(team)}
+					{@const key = cardKey(section.key, team)}
+					{@const teamStat = cardStats.get(key)}
 					{@const pct =
 						teamStat && teamStat.total > 0 ? Math.round((teamStat.have / teamStat.total) * 100) : 0}
-					{@const isOpen = openTeams.has(team) || teamsMatchingQuery.has(team)}
+					{@const isOpen = openCards.has(key) || cardsMatchingQuery.has(key)}
 					<div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
 						<button
 							type="button"
-							onclick={() => toggleTeam(team)}
+							onclick={() => toggleCard(key)}
 							aria-expanded={isOpen}
 							class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-800/60"
 						>
@@ -258,10 +265,10 @@
 						</button>
 
 						{#if isOpen}
-							<div class="space-y-1.5 border-t border-slate-800 px-3 pb-3 pt-3">
+							<div class="grid grid-cols-3 gap-2 border-t border-slate-800 px-3 pb-3 pt-3 sm:grid-cols-5">
 								{#each teamItems as item (item.code)}
 									<div
-										class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 {item.quantity >
+										class="flex flex-col items-center gap-1 rounded-lg border p-2 text-center {item.quantity >
 										0
 											? 'border-emerald-800 bg-emerald-950/30'
 											: 'border-slate-800 bg-slate-900/40'}"
@@ -269,37 +276,37 @@
 										<button
 											type="button"
 											onclick={() => toggleHave(item)}
-											class="flex min-w-0 flex-1 items-center gap-3 text-left"
+											class="flex w-full flex-col items-center gap-1"
 										>
 											<span
-												class="flex h-6 w-6 shrink-0 items-center justify-center rounded border text-sm {item.quantity >
+												class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-sm {item.quantity >
 												0
 													? 'border-emerald-500 bg-emerald-500 text-slate-950'
 													: 'border-slate-600'}"
 											>
 												{#if item.quantity > 0}✓{/if}
 											</span>
-											<span class="min-w-0">
-												<span class="block truncate text-sm font-medium">{item.name}</span>
-												<span class="block text-xs text-slate-500">#{item.code}</span>
-											</span>
+											<span class="w-full truncate text-[11px] text-slate-500">#{item.code}</span>
+											<span class="line-clamp-2 w-full text-xs font-medium leading-tight"
+												>{item.name}</span
+											>
 										</button>
 
 										{#if item.quantity > 0}
-											<div class="flex shrink-0 items-center gap-1 text-sm">
+											<div class="mt-0.5 flex shrink-0 items-center gap-1 text-xs">
 												<button
 													type="button"
 													onclick={() => decDup(item)}
 													disabled={item.quantity <= 1}
-													class="h-7 w-7 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
+													class="h-5 w-5 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
 												>
 													−
 												</button>
-												<span class="w-6 text-center text-slate-300">{item.quantity - 1}</span>
+												<span class="w-4 text-center text-slate-300">{item.quantity - 1}</span>
 												<button
 													type="button"
 													onclick={() => incDup(item)}
-													class="h-7 w-7 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
+													class="h-5 w-5 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
 												>
 													+
 												</button>
