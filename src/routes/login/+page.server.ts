@@ -18,7 +18,8 @@ export const actions: Actions = {
 		});
 
 		if (error) {
-			return fail(500, { error: 'No pudimos enviar el enlace. Intenta de nuevo.', email });
+			console.error('signInWithOtp error:', error.status, error.code, error.message);
+			return fail(500, { error: `No pudimos enviar el enlace: ${error.message}`, email });
 		}
 
 		return { sent: true, email };
