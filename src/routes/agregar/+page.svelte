@@ -4,11 +4,16 @@
 	import type { StickerItem } from '$lib/types';
 	import { getTeamFlag } from '$lib/flags';
 	import { upsertUserStickers } from '$lib/collectionMutations';
+	import OcrCodeScanner from '$lib/components/OcrCodeScanner.svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	let items = $state<StickerItem[]>(data.items.map((item) => ({ ...item })));
 	let byCode = $derived.by(() => new Map(items.map((item) => [item.code.toUpperCase(), item])));
+	let knownCodes = $derived([...byCode.keys()]);
+
+	type InputMode = 'text' | 'camera';
+	let inputMode = $state<InputMode>('text');
 
 	type Outcome =
 		| { kind: 'duplicate'; item: StickerItem }
@@ -173,28 +178,56 @@
 	<div>
 		<h1 class="text-lg font-semibold">Modo agregar</h1>
 		<p class="text-sm text-slate-500">
-			Escribe el código de cada sticker — se confirma solo al dejar de teclear. Los repetidos se
-			suman solos.
+			{inputMode === 'text'
+				? 'Escribe el código de cada sticker — se confirma solo al dejar de teclear. Los repetidos se suman solos.'
+				: 'Apunta al reverso de la estampita — se va agregando sola, sticker tras sticker, sin salir de la cámara.'}
 		</p>
 	</div>
 
-	<form onsubmit={handleSubmit}>
-		<input
-			bind:this={inputEl}
-			bind:value={code}
-			onkeydown={handleKeydown}
-			autocomplete="off"
-			autocapitalize="characters"
-			spellcheck="false"
-			placeholder="Código (ej. MEX10)"
-			class="w-full rounded-lg bg-slate-900 px-4 py-3 text-center font-mono text-xl uppercase tracking-widest text-slate-100 placeholder-slate-600 transition-colors placeholder:text-sm placeholder:tracking-normal placeholder:normal-case focus:ring-emerald-500 {isRecognized
-				? 'border-2 border-emerald-500'
-				: 'border border-slate-700 focus:border-emerald-500'}"
-		/>
-		{#if isRecognized}
-			<p class="mt-1.5 text-center text-xs text-emerald-400">Reconocido · confirmando…</p>
-		{/if}
-	</form>
+	<div class="flex gap-2">
+		<button
+			type="button"
+			onclick={() => (inputMode = 'text')}
+			class="flex-1 rounded-md border px-3 py-1.5 text-sm {inputMode === 'text'
+				? 'border-emerald-500 bg-emerald-600 text-white'
+				: 'border-slate-700 text-slate-300 hover:bg-slate-800'}"
+		>
+			⌨️ Escribir
+		</button>
+		<button
+			type="button"
+			onclick={() => (inputMode = 'camera')}
+			class="flex-1 rounded-md border px-3 py-1.5 text-sm {inputMode === 'camera'
+				? 'border-emerald-500 bg-emerald-600 text-white'
+				: 'border-slate-700 text-slate-300 hover:bg-slate-800'}"
+		>
+			📷 Cámara
+		</button>
+	</div>
+
+	{#if inputMode === 'text'}
+		<form onsubmit={handleSubmit}>
+			<input
+				bind:this={inputEl}
+				bind:value={code}
+				onkeydown={handleKeydown}
+				autocomplete="off"
+				autocapitalize="characters"
+				spellcheck="false"
+				placeholder="Código (ej. MEX10)"
+				class="w-full rounded-lg bg-slate-900 px-4 py-3 text-center font-mono text-xl uppercase tracking-widest text-slate-100 placeholder-slate-600 transition-colors placeholder:text-sm placeholder:tracking-normal placeholder:normal-case focus:ring-emerald-500 {isRecognized
+					? 'border-2 border-emerald-500'
+					: 'border border-slate-700 focus:border-emerald-500'}"
+			/>
+			{#if isRecognized}
+				<p class="mt-1.5 text-center text-xs text-emerald-400">Reconocido · confirmando…</p>
+			{/if}
+		</form>
+	{:else}
+		{#key inputMode}
+			<OcrCodeScanner {knownCodes} onDetected={processCode} />
+		{/key}
+	{/if}
 
 	{#if errorMessage}
 		<div class="rounded-lg border border-red-800 bg-red-950/50 px-4 py-2 text-sm text-red-300">
