@@ -5,7 +5,6 @@
 	import { upsertUserStickers } from '$lib/collectionMutations';
 	import {
 		decodeFiguritasQr,
-		invertFiguritasCollection,
 		FiguritasFormatError,
 		FiguritasUnsupportedError,
 		FiguritasDecodeError,
@@ -27,7 +26,6 @@
 
 	let step = $state<Step>('scan');
 	let rawDecoded = $state<FiguritasCollection | null>(null);
-	let invert = $state(false);
 	let decodeError = $state('');
 	let applying = $state(false);
 	let applyError = $state('');
@@ -64,20 +62,15 @@
 	function resetToScan() {
 		step = 'scan';
 		rawDecoded = null;
-		invert = false;
 		decodeError = '';
 		applyError = '';
 	}
 
-	let effectiveDecoded = $derived(
-		rawDecoded ? (invert ? invertFiguritasCollection(rawDecoded) : rawDecoded) : null
-	);
-
 	let byCode = $derived(new Map(data.items.map((item) => [item.code, item])));
 
 	let diff = $derived.by<DiffRow[]>(() => {
-		if (!effectiveDecoded) return [];
-		return effectiveDecoded.entries.map((entry) => {
+		if (!rawDecoded) return [];
+		return rawDecoded.entries.map((entry) => {
 			const item = byCode.get(entry.code)!;
 			const implied = entry.missing ? 0 : entry.hasDuplicate ? 2 : 1;
 			return {
@@ -146,29 +139,10 @@
 				{decodeError}
 			</div>
 		{/if}
-	{:else if step === 'preview' && effectiveDecoded}
-		<div class="rounded-lg border border-amber-800 bg-amber-950/30 p-3 text-xs text-amber-300">
-			Función experimental — la lectura del código de Figuritas no está 100% confirmada. Revisa
-			que estos números coincidan con lo que recuerdas de tu colección antes de confirmar. Nada
-			se guarda todavía.
-		</div>
-
-		<label
-			class="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm"
-		>
-			<input
-				type="checkbox"
-				bind:checked={invert}
-				class="rounded border-slate-600 text-emerald-600"
-			/>
-			<span>
-				Invertir interpretación
-				<span class="block text-xs text-slate-500">
-					Actívalo si los resultados no coinciden con tu colección real — por ejemplo, si casi
-					todo aparece como "me falta" cuando en realidad ya tienes casi todo, o al revés.
-				</span>
-			</span>
-		</label>
+	{:else if step === 'preview' && rawDecoded}
+		<p class="text-sm text-slate-400">
+			Revisa los cambios antes de confirmar. Nada se guarda todavía.
+		</p>
 
 		<div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
 			<p class="text-sm text-slate-300">
@@ -223,9 +197,7 @@
 		</div>
 
 		{#if changed.length === 0}
-			<p class="text-center text-xs text-slate-600">
-				No hay cambios que aplicar con esta interpretación.
-			</p>
+			<p class="text-center text-xs text-slate-600">No hay cambios que aplicar.</p>
 		{/if}
 	{:else if step === 'done'}
 		<div class="rounded-xl border border-emerald-700 bg-emerald-950/30 p-4 text-center">

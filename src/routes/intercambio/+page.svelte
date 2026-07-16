@@ -34,9 +34,4 @@
 			recibir.
 		</p>
 	</a>
-
-	<div class="rounded-lg border border-amber-800 bg-amber-950/30 p-3 text-xs text-amber-300">
-		Esta función es experimental: el formato del código de Figuritas no es oficial, lo inferimos
-		de un ejemplo. Siempre vas a ver una pantalla de revisión antes de guardar cualquier cambio.
-	</div>
 </div>

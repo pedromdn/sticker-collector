@@ -29,9 +29,9 @@ export class FiguritasLengthMismatchError extends FiguritasError {
 
 export type FiguritasEntry = {
 	code: string;
-	/** Segment A, bit=1 (raw, pre-invert). Working hypothesis: 1 = "me falta". */
+	/** Segment A, bit=1 means "me falta". */
 	missing: boolean;
-	/** Segment B, bit=1 (raw, pre-invert). Working hypothesis: 1 = "tengo repetido". */
+	/** Segment B, bit=1 means "tengo repetido". */
 	hasDuplicate: boolean;
 };
 
@@ -109,19 +109,4 @@ export async function decodeFiguritasQr(
 	}));
 
 	return { entries, meta: { segmentABits: bitsA, segmentBBits: bitsB } };
-}
-
-/**
- * Flips the missing/hasDuplicate polarity without re-decoding — the "invertir
- * interpretación" safety valve, since bit polarity is an unverified guess.
- */
-export function invertFiguritasCollection(collection: FiguritasCollection): FiguritasCollection {
-	return {
-		...collection,
-		entries: collection.entries.map((entry) => ({
-			...entry,
-			missing: !entry.missing,
-			hasDuplicate: !entry.hasDuplicate
-		}))
-	};
 }

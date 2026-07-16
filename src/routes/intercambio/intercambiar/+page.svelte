@@ -7,7 +7,6 @@
 	import { upsertUserStickers } from '$lib/collectionMutations';
 	import {
 		decodeFiguritasQr,
-		invertFiguritasCollection,
 		FiguritasFormatError,
 		FiguritasUnsupportedError,
 		FiguritasDecodeError,
@@ -22,7 +21,6 @@
 
 	let step = $state<Step>('scan');
 	let rawDecoded = $state<FiguritasCollection | null>(null);
-	let invert = $state(false);
 	let decodeError = $state('');
 	let applying = $state(false);
 	let applyError = $state('');
@@ -61,25 +59,20 @@
 	function resetToScan() {
 		step = 'scan';
 		rawDecoded = null;
-		invert = false;
 		decodeError = '';
 		applyError = '';
 	}
 
-	let effectiveDecoded = $derived(
-		rawDecoded ? (invert ? invertFiguritasCollection(rawDecoded) : rawDecoded) : null
-	);
-
-	// Rebuilds the suggested trade lists whenever a new code is decoded or the
-	// invert toggle flips. Kept as $state (not $derived) so per-row checkbox
-	// toggles below can mutate `.checked` directly and stay reactive.
+	// Rebuilds the suggested trade lists whenever a new code is decoded. Kept
+	// as $state (not $derived) so per-row checkbox toggles below can mutate
+	// `.checked` directly and stay reactive.
 	$effect(() => {
-		if (!effectiveDecoded) {
+		if (!rawDecoded) {
 			puedesDar = [];
 			puedesRecibir = [];
 			return;
 		}
-		const friendByCode = new Map(effectiveDecoded.entries.map((e) => [e.code, e]));
+		const friendByCode = new Map(rawDecoded.entries.map((e) => [e.code, e]));
 		puedesDar = data.items
 			.filter((i) => i.quantity >= 2 && friendByCode.get(i.code)?.missing === true)
 			.map((item) => ({ item, checked: true }));
@@ -119,109 +112,91 @@
 	<title>Intercambiar · Mi Álbum Mundial 2026</title>
 </svelte:head>
 
-<div class="mx-auto max-w-lg space-y-6 pb-16">
+<div class="mx-auto max-w-2xl space-y-6 pb-16">
 	<div class="flex items-center justify-between">
 		<h1 class="text-lg font-semibold">Intercambiar</h1>
 		<a href="/intercambio" class="text-sm text-emerald-400 hover:underline">← Volver</a>
 	</div>
 
 	{#if step === 'scan'}
-		<p class="text-sm text-slate-400">
-			Escanea o pega el código de Figuritas de la otra persona para ver qué le puedes dar y qué
-			puedes recibir.
-		</p>
-		<QrInput onSubmit={handleScan} />
-		{#if decodeError}
-			<div class="rounded-lg border border-red-800 bg-red-950/50 px-4 py-2 text-sm text-red-300">
-				{decodeError}
-			</div>
-		{/if}
-	{:else if step === 'review' && effectiveDecoded}
-		<div class="rounded-lg border border-amber-800 bg-amber-950/30 p-3 text-xs text-amber-300">
-			Función experimental — revisa que esto tenga sentido antes de confirmar. Nada se guarda
-			todavía.
+		<div class="mx-auto max-w-lg space-y-4">
+			<p class="text-sm text-slate-400">
+				Escanea o pega el código de Figuritas de la otra persona para ver qué le puedes dar y qué
+				puedes recibir.
+			</p>
+			<QrInput onSubmit={handleScan} />
+			{#if decodeError}
+				<div class="rounded-lg border border-red-800 bg-red-950/50 px-4 py-2 text-sm text-red-300">
+					{decodeError}
+				</div>
+			{/if}
 		</div>
-
-		<label
-			class="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm"
-		>
-			<input
-				type="checkbox"
-				bind:checked={invert}
-				class="rounded border-slate-600 text-emerald-600"
-			/>
-			<span>
-				Invertir interpretación
-				<span class="block text-xs text-slate-500">
-					Actívalo si las listas de abajo no tienen sentido con la colección real de la otra
-					persona.
-				</span>
-			</span>
-		</label>
-
+	{:else if step === 'review' && rawDecoded}
 		{#if applyError}
 			<div class="rounded-lg border border-red-800 bg-red-950/50 px-4 py-2 text-sm text-red-300">
 				{applyError}
 			</div>
 		{/if}
 
-		<div>
-			<h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-				Puedes dar ({puedesDar.length})
-			</h2>
-			{#if puedesDar.length === 0}
-				<p class="text-sm text-slate-600">Nada por ahora.</p>
-			{:else}
-				<ul class="space-y-1.5">
-					{#each puedesDar as candidate (candidate.item.code)}
-						<li
-							class="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
-						>
-							<input
-								type="checkbox"
-								bind:checked={candidate.checked}
-								class="rounded border-slate-600 text-emerald-600"
-							/>
-							<span class="text-lg leading-none">{getTeamFlag(candidate.item.team)}</span>
-							<span class="min-w-0 flex-1">
-								<span class="block truncate text-sm font-medium">{candidate.item.name}</span>
-								<span class="block text-xs text-slate-500">#{candidate.item.code}</span>
-							</span>
-						</li>
-					{/each}
-				</ul>
-			{/if}
+		<div class="grid gap-4 sm:grid-cols-2">
+			<div>
+				<h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+					Puedes dar ({puedesDar.length})
+				</h2>
+				{#if puedesDar.length === 0}
+					<p class="text-sm text-slate-600">Nada por ahora.</p>
+				{:else}
+					<ul class="space-y-1.5">
+						{#each puedesDar as candidate (candidate.item.code)}
+							<li
+								class="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
+							>
+								<input
+									type="checkbox"
+									bind:checked={candidate.checked}
+									class="rounded border-slate-600 text-emerald-600"
+								/>
+								<span class="text-lg leading-none">{getTeamFlag(candidate.item.team)}</span>
+								<span class="min-w-0 flex-1">
+									<span class="block truncate text-sm font-medium">{candidate.item.name}</span>
+									<span class="block text-xs text-slate-500">#{candidate.item.code}</span>
+								</span>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
+
+			<div>
+				<h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+					Puedes recibir ({puedesRecibir.length})
+				</h2>
+				{#if puedesRecibir.length === 0}
+					<p class="text-sm text-slate-600">Nada por ahora.</p>
+				{:else}
+					<ul class="space-y-1.5">
+						{#each puedesRecibir as candidate (candidate.item.code)}
+							<li
+								class="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
+							>
+								<input
+									type="checkbox"
+									bind:checked={candidate.checked}
+									class="rounded border-slate-600 text-emerald-600"
+								/>
+								<span class="text-lg leading-none">{getTeamFlag(candidate.item.team)}</span>
+								<span class="min-w-0 flex-1">
+									<span class="block truncate text-sm font-medium">{candidate.item.name}</span>
+									<span class="block text-xs text-slate-500">#{candidate.item.code}</span>
+								</span>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
 		</div>
 
-		<div>
-			<h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-				Puedes recibir ({puedesRecibir.length})
-			</h2>
-			{#if puedesRecibir.length === 0}
-				<p class="text-sm text-slate-600">Nada por ahora.</p>
-			{:else}
-				<ul class="space-y-1.5">
-					{#each puedesRecibir as candidate (candidate.item.code)}
-						<li
-							class="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
-						>
-							<input
-								type="checkbox"
-								bind:checked={candidate.checked}
-								class="rounded border-slate-600 text-emerald-600"
-							/>
-							<span class="text-lg leading-none">{getTeamFlag(candidate.item.team)}</span>
-							<span class="min-w-0 flex-1">
-								<span class="block truncate text-sm font-medium">{candidate.item.name}</span>
-								<span class="block text-xs text-slate-500">#{candidate.item.code}</span>
-							</span>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</div>
-
-		<div class="flex gap-2">
+		<div class="mx-auto flex max-w-lg gap-2">
 			<button
 				type="button"
 				onclick={resetToScan}
@@ -239,17 +214,19 @@
 			</button>
 		</div>
 	{:else if step === 'done'}
-		<div class="rounded-xl border border-emerald-700 bg-emerald-950/30 p-4 text-center">
-			<p class="text-emerald-300">✓ Intercambio registrado</p>
-			<p class="mt-1 text-sm text-slate-400">
-				Diste {doneSummary.given} · Recibiste {doneSummary.received}
-			</p>
+		<div class="mx-auto max-w-lg space-y-4">
+			<div class="rounded-xl border border-emerald-700 bg-emerald-950/30 p-4 text-center">
+				<p class="text-emerald-300">✓ Intercambio registrado</p>
+				<p class="mt-1 text-sm text-slate-400">
+					Diste {doneSummary.given} · Recibiste {doneSummary.received}
+				</p>
+			</div>
+			<a
+				href="/"
+				class="block w-full rounded-md bg-emerald-600 py-2 text-center text-sm font-medium text-white hover:bg-emerald-500"
+			>
+				Ver mi colección
+			</a>
 		</div>
-		<a
-			href="/"
-			class="block w-full rounded-md bg-emerald-600 py-2 text-center text-sm font-medium text-white hover:bg-emerald-500"
-		>
-			Ver mi colección
-		</a>
 	{/if}
 </div>
