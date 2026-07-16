@@ -3,6 +3,7 @@ export type StickerItem = {
 	name: string;
 	team: string;
 	quantity: number;
+	img: string | null;
 };
 
 export type GroupMember = {

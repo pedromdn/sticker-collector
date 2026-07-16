@@ -5,6 +5,7 @@
 	import { getTeamFlag } from '$lib/flags';
 	import { upsertUserStickers } from '$lib/collectionMutations';
 	import OcrCodeScanner from '$lib/components/OcrCodeScanner.svelte';
+	import NewStickerModal from '$lib/components/NewStickerModal.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -268,37 +269,6 @@
 					Cancelar
 				</button>
 			</div>
-		{:else if outcome.kind === 'pending-new'}
-			{@const pendingItem = outcome.item}
-			<div class="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
-				<div class="flex items-center gap-3">
-					<span class="text-3xl leading-none">{getTeamFlag(pendingItem.team)}</span>
-					<div class="min-w-0 flex-1">
-						<p class="truncate font-semibold text-slate-100">{pendingItem.name}</p>
-						<p class="text-xs text-slate-400">#{pendingItem.code} · {pendingItem.team}</p>
-					</div>
-				</div>
-				<p class="mt-2 text-center text-sm text-slate-400">No la tenías todavía</p>
-				<div class="mt-3 flex gap-2">
-					<button
-						type="button"
-						onclick={cancelPending}
-						class="flex-1 rounded-md border border-slate-700 py-2 text-sm text-slate-300 hover:bg-slate-800"
-					>
-						Cancelar
-					</button>
-					<button
-						type="button"
-						onclick={() => confirmAdd(pendingItem)}
-						class="flex-1 rounded-md bg-emerald-600 py-2 text-sm font-medium text-white hover:bg-emerald-500"
-					>
-						✓ Agregar
-					</button>
-				</div>
-				<p class="mt-2 text-center text-xs text-slate-600">
-					O deja el campo vacío y presiona Enter
-				</p>
-			</div>
 		{:else if outcome.kind === 'added'}
 			<div class="rounded-xl border border-emerald-700 bg-emerald-950/30 p-4">
 				<div class="flex items-center gap-3">
@@ -313,6 +283,17 @@
 		{/if}
 	{:else}
 		<p class="py-8 text-center text-sm text-slate-600">Escribe un código para empezar</p>
+	{/if}
+
+	{#if outcome?.kind === 'pending-new'}
+		{@const pendingItem = outcome.item}
+		{#key pendingItem.code}
+			<NewStickerModal
+				item={pendingItem}
+				onConfirm={() => confirmAdd(pendingItem)}
+				onCancel={cancelPending}
+			/>
+		{/key}
 	{/if}
 
 	<div

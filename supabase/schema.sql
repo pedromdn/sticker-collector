@@ -233,3 +233,16 @@ create policy "users insert their own sticker events"
 create index if not exists sticker_events_user_id_created_at_idx on public.sticker_events (user_id, created_at desc);
 create index if not exists sticker_events_group_id_created_at_idx on public.sticker_events (group_id, created_at desc);
 create index if not exists sticker_events_sticker_code_idx on public.sticker_events (sticker_code);
+
+
+-- Sticker images: filename (within the private "sticker-images" storage
+-- bucket) shown when a brand-new sticker is added. Not every sticker has one.
+alter table public.stickers add column if not exists img text;
+
+-- The bucket is private, so reading an object (including signing a URL for
+-- it) requires this policy — without it, storage.createSignedUrl() fails
+-- even for a logged-in user.
+create policy "authenticated users can read sticker images"
+	on storage.objects for select
+	to authenticated
+	using (bucket_id = 'sticker-images');

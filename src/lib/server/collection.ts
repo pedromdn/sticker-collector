@@ -13,7 +13,7 @@ export async function loadCollectionItems(
 ): Promise<StickerItem[]> {
 	const [{ data: stickers, error: stickersError }, { data: userStickers, error: userError }] =
 		await Promise.all([
-			supabase.from('stickers').select('code, name, team').order('sort_order'),
+			supabase.from('stickers').select('code, name, team, img').order('sort_order'),
 			supabase.from('user_stickers').select('sticker_code, quantity').eq('user_id', userId)
 		]);
 

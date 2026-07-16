@@ -14,8 +14,15 @@ function sqlString(value) {
 	return `'${String(value).replace(/'/g, "''")}'`;
 }
 
+function sqlNullableString(value) {
+	return value ? sqlString(value) : 'null';
+}
+
 const rows = catalog.stickers
-	.map((s) => `(${sqlString(s.code)}, ${sqlString(s.name)}, ${sqlString(s.team)})`)
+	.map(
+		(s) =>
+			`(${sqlString(s.code)}, ${sqlString(s.name)}, ${sqlString(s.team)}, ${sqlNullableString(s.img)})`
+	)
 	.join(',\n');
 
 const sql = `-- Auto-generated from panini-wc-2026-catalog.json by scripts/generate-seed.mjs
@@ -23,12 +30,13 @@ const sql = `-- Auto-generated from panini-wc-2026-catalog.json by scripts/gener
 -- Scraped at: ${catalog.scrapedAt}
 -- Total stickers: ${catalog.stickers.length}
 
-insert into public.stickers (code, name, team)
+insert into public.stickers (code, name, team, img)
 values
 ${rows}
 on conflict (code) do update
 	set name = excluded.name,
-	    team = excluded.team;
+	    team = excluded.team,
+	    img = excluded.img;
 `;
 
 writeFileSync(join(root, 'supabase', 'seed.sql'), sql, 'utf-8');
