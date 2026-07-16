@@ -166,7 +166,7 @@ export async function loadStickerHistory(
 	const codes = [...new Set(events.map((event) => event.sticker_code))];
 	const { data: stickers, error: stickersError } = await supabase
 		.from('stickers')
-		.select('code, name, team')
+		.select('code, name, team, img')
 		.in('code', codes);
 
 	if (stickersError) throw stickersError;
@@ -184,6 +184,7 @@ export async function loadStickerHistory(
 			sticker_code: event.sticker_code,
 			sticker_name: sticker?.name ?? event.sticker_code,
 			team: sticker?.team ?? '',
+			img: sticker?.img ?? null,
 			action: event.action,
 			delta: event.delta,
 			quantity_after: event.quantity_after

@@ -5,6 +5,7 @@
 	import { getTeamFlag } from '$lib/flags';
 	import { getSectionKey, getSectionLabel, SECTION_ORDER, type SectionKey } from '$lib/groups';
 	import { upsertUserStickers } from '$lib/collectionMutations';
+	import StickerThumb from '$lib/components/StickerThumb.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -376,7 +377,7 @@
 			<ul class="max-h-80 space-y-1 overflow-y-auto pr-1">
 				{#each data.history as event (event.id)}
 					<li class="flex items-center gap-3 rounded-md border border-slate-800 bg-slate-900/30 px-3 py-2 text-sm">
-						<span class="text-lg leading-none">{getTeamFlag(event.team)}</span>
+						<StickerThumb img={event.img} team={event.team} alt={event.sticker_name} class="h-8 w-8" />
 						<span class="min-w-0 flex-1">
 							<span class="block truncate font-medium text-slate-200">{event.sticker_name}</span>
 							<span class="block text-xs text-slate-500">#{event.sticker_code} - {formatEventDate(event.created_at)}</span>

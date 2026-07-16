@@ -3,7 +3,7 @@
 	import type { CollaborativeStickerItem } from '$lib/types';
 	import QRCode from 'qrcode';
 	import QrInput from '$lib/components/QrInput.svelte';
-	import { getTeamFlag } from '$lib/flags';
+	import StickerThumb from '$lib/components/StickerThumb.svelte';
 	import { catalogOrderedCodes } from '$lib/groups';
 	import { upsertUserStickers } from '$lib/collectionMutations';
 	import {
@@ -264,7 +264,12 @@
 									bind:checked={candidate.checked}
 									class="rounded border-slate-600 text-emerald-600"
 								/>
-								<span class="text-lg leading-none">{getTeamFlag(candidate.item.team)}</span>
+								<StickerThumb
+									img={candidate.item.img}
+									team={candidate.item.team}
+									alt={candidate.item.name}
+									class="h-8 w-8"
+								/>
 								<span class="min-w-0 flex-1">
 									<span class="block truncate text-sm font-medium">{candidate.item.name}</span>
 									<span class="block text-xs text-slate-500">#{candidate.item.code}</span>
@@ -292,7 +297,12 @@
 									bind:checked={candidate.checked}
 									class="rounded border-slate-600 text-emerald-600"
 								/>
-								<span class="text-lg leading-none">{getTeamFlag(candidate.item.team)}</span>
+								<StickerThumb
+									img={candidate.item.img}
+									team={candidate.item.team}
+									alt={candidate.item.name}
+									class="h-8 w-8"
+								/>
 								<span class="min-w-0 flex-1">
 									<span class="block truncate text-sm font-medium">{candidate.item.name}</span>
 									<span class="block text-xs text-slate-500">#{candidate.item.code}</span>
@@ -346,7 +356,7 @@
 							<li
 								class="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
 							>
-								<span class="text-lg leading-none">{getTeamFlag(item.team)}</span>
+								<StickerThumb img={item.img} team={item.team} alt={item.name} class="h-8 w-8" />
 								<span class="min-w-0 flex-1">
 									<span class="block truncate text-sm font-medium">{item.name}</span>
 									<span class="block text-xs text-slate-500">#{item.code}</span>
@@ -369,7 +379,7 @@
 							<li
 								class="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
 							>
-								<span class="text-lg leading-none">{getTeamFlag(item.team)}</span>
+								<StickerThumb img={item.img} team={item.team} alt={item.name} class="h-8 w-8" />
 								<span class="min-w-0 flex-1">
 									<span class="block truncate text-sm font-medium">{item.name}</span>
 									<span class="block text-xs text-slate-500">#{item.code}</span>

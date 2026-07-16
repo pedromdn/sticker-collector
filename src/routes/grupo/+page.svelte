@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PageData } from './$types';
+	import StickerThumb from '$lib/components/StickerThumb.svelte';
 
 	let { data, form }: { data: PageData; form: { error?: string } | null } = $props();
 	let copied = $state(false);
@@ -122,15 +123,18 @@
 				<ul class="max-h-80 space-y-1 overflow-y-auto pr-1">
 					{#each data.history as event (event.id)}
 						<li class="rounded-md border border-slate-800 bg-slate-900/30 px-3 py-2 text-sm">
-							<div class="flex items-center justify-between gap-3">
-								<span class="min-w-0">
-									<span class="block truncate font-medium text-slate-200">{event.actor_name ?? 'Miembro anterior'} {eventLabel(event.action, event.delta)}</span>
-									<span class="block truncate text-xs text-slate-500">#{event.sticker_code} - {event.sticker_name}</span>
-								</span>
-								<span class="shrink-0 text-right text-xs {event.delta > 0 ? 'text-emerald-400' : 'text-amber-400'}">
-									{event.delta > 0 ? '+' : ''}{event.delta}<br />
-									<span class="text-slate-600">{formatEventDate(event.created_at)}</span>
-								</span>
+							<div class="flex items-center gap-3">
+								<StickerThumb img={event.img} team={event.team} alt={event.sticker_name} class="h-8 w-8" />
+								<div class="flex min-w-0 flex-1 items-center justify-between gap-3">
+									<span class="min-w-0">
+										<span class="block truncate font-medium text-slate-200">{event.actor_name ?? 'Miembro anterior'} {eventLabel(event.action, event.delta)}</span>
+										<span class="block truncate text-xs text-slate-500">#{event.sticker_code} - {event.sticker_name}</span>
+									</span>
+									<span class="shrink-0 text-right text-xs {event.delta > 0 ? 'text-emerald-400' : 'text-amber-400'}">
+										{event.delta > 0 ? '+' : ''}{event.delta}<br />
+										<span class="text-slate-600">{formatEventDate(event.created_at)}</span>
+									</span>
+								</div>
 							</div>
 						</li>
 					{/each}

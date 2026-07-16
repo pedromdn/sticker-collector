@@ -38,6 +38,7 @@ export type StickerHistoryEvent = {
 	sticker_code: string;
 	sticker_name: string;
 	team: string;
+	img: string | null;
 	action: StickerEventAction;
 	delta: number;
 	quantity_after: number;
