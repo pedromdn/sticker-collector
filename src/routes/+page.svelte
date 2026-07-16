@@ -4,6 +4,7 @@
 	import type { StatusFilter, StickerItem } from '$lib/types';
 	import { getTeamFlag } from '$lib/flags';
 	import { getSectionKey, getSectionLabel, SECTION_ORDER, type SectionKey } from '$lib/groups';
+	import { upsertUserStickers } from '$lib/collectionMutations';
 
 	let { data }: { data: PageData } = $props();
 
@@ -27,12 +28,9 @@
 		const userId = data.user?.id;
 		if (!userId) return;
 
-		const { error } = await data.supabase
-			.from('user_stickers')
-			.upsert(
-				{ user_id: userId, sticker_code: code, quantity },
-				{ onConflict: 'user_id,sticker_code' }
-			);
+		const { error } = await upsertUserStickers(data.supabase, userId, [
+			{ sticker_code: code, quantity }
+		]);
 
 		if (error) {
 			errorMessage = 'No se pudo guardar el cambio. Revisa tu conexión e intenta de nuevo.';

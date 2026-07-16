@@ -55,6 +55,14 @@
 				>
 					Agregar
 				</a>
+				<a
+					href="/intercambio"
+					class="rounded-md px-3 py-1.5 {page.url.pathname.startsWith('/intercambio')
+						? 'bg-emerald-600 text-white'
+						: 'text-slate-400 hover:bg-slate-800'}"
+				>
+					Intercambio
+				</a>
 			</nav>
 		</header>
 	{/if}

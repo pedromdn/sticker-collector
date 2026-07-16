@@ -1,3 +1,5 @@
+import type { StickerItem } from './types';
+
 // World Cup 2026 group stage draw (Dec 2025), in the same order the official
 // Panini album lays them out: hosts seeded as A1/B1/D1, then the rest of pot 1.
 export const GROUP_ORDER = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as const;
@@ -94,3 +96,10 @@ export const SECTION_ORDER: SectionKey[] = [
 	'history',
 	'special'
 ];
+
+// Figuritas' checklist (980 stickers) matches this app's catalog order minus
+// the 54 special-variant stickers, which Figuritas doesn't track separately.
+// Used to map each bit position in a decoded Figuritas QR to a sticker code.
+export function catalogOrderedCodes(items: StickerItem[]): string[] {
+	return items.filter((item) => !isSpecialVariant(item.code)).map((item) => item.code);
+}
