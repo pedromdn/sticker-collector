@@ -21,7 +21,7 @@
 		if (!item.img) return;
 		loadingImg = true;
 		try {
-			const res = await fetch(`/api/sticker-image?img=${encodeURIComponent(item.img)}`);
+			const res = await fetch(`/api/sticker-image?img=${encodeURIComponent(item.img)}&size=mid`);
 			if (!res.ok) throw new Error('not ok');
 			const data = await res.json();
 			imgUrl = data.url;
