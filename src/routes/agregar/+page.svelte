@@ -13,6 +13,11 @@
 	let byCode = $derived.by(() => new Map(items.map((item) => [item.code.toUpperCase(), item])));
 	let knownCodes = $derived([...byCode.keys()]);
 
+	// Signed "mid" URLs for every sticker with an image, fetched once in the
+	// background so the new-sticker modal can show up instantly instead of
+	// waiting on a sign-then-download round trip at reveal time.
+	let midUrlCache = $state<Record<string, string>>({});
+
 	type InputMode = 'text' | 'camera';
 	let inputMode = $state<InputMode>('text');
 
@@ -173,6 +178,22 @@
 
 	onMount(() => {
 		inputEl?.focus();
+
+		const imgs = [...new Set(items.map((item) => item.img).filter((img): img is string => !!img))];
+		if (imgs.length > 0) {
+			fetch('/api/sticker-images', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ imgs, size: 'mid' })
+			})
+				.then((res) => (res.ok ? res.json() : null))
+				.then((data) => {
+					if (data?.urls) midUrlCache = data.urls;
+				})
+				.catch(() => {
+					// Silent — the modal falls back to fetching its own URL on demand.
+				});
+		}
 	});
 </script>
 
@@ -290,6 +311,7 @@
 		{#key pendingItem.code}
 			<NewStickerModal
 				item={pendingItem}
+				prefetchedUrl={pendingItem.img ? midUrlCache[pendingItem.img] : undefined}
 				onConfirm={() => confirmAdd(pendingItem)}
 				onCancel={cancelPending}
 			/>

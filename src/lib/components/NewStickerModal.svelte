@@ -5,20 +5,22 @@
 
 	let {
 		item,
+		prefetchedUrl,
 		onConfirm,
 		onCancel
 	}: {
 		item: StickerItem;
+		prefetchedUrl?: string;
 		onConfirm: () => void;
 		onCancel: () => void;
 	} = $props();
 
-	let imgUrl = $state('');
+	let imgUrl = $state(prefetchedUrl ?? '');
 	let imgFailed = $state(false);
 	let loadingImg = $state(false);
 
 	onMount(async () => {
-		if (!item.img) return;
+		if (!item.img || imgUrl) return;
 		loadingImg = true;
 		try {
 			const res = await fetch(`/api/sticker-image?img=${encodeURIComponent(item.img)}&size=mid`);
