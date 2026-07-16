@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
-	import type { StatusFilter, StickerItem } from '$lib/types';
+	import type { CollaborativeStickerItem, StatusFilter } from '$lib/types';
 	import { getTeamFlag } from '$lib/flags';
 	import { getSectionKey, getSectionLabel, SECTION_ORDER, type SectionKey } from '$lib/groups';
 	import { upsertUserStickers } from '$lib/collectionMutations';
 
 	let { data }: { data: PageData } = $props();
 
-	let items = $state<StickerItem[]>(data.items.map((item) => ({ ...item })));
+	let items = $state<CollaborativeStickerItem[]>(data.items.map((item) => ({ ...item })));
+	let group = $derived(data.group);
 	let query = $state('');
 	let statusFilter = $state<StatusFilter>('all');
 	let errorMessage = $state('');
@@ -50,17 +51,17 @@
 		);
 	}
 
-	function toggleHave(item: StickerItem) {
+	function toggleHave(item: CollaborativeStickerItem) {
 		item.quantity = item.quantity > 0 ? 0 : 1;
 		scheduleSave(item.code, item.quantity);
 	}
 
-	function incDup(item: StickerItem) {
+	function incDup(item: CollaborativeStickerItem) {
 		item.quantity += 1;
 		scheduleSave(item.code, item.quantity);
 	}
 
-	function decDup(item: StickerItem) {
+	function decDup(item: CollaborativeStickerItem) {
 		if (item.quantity <= 1) return;
 		item.quantity -= 1;
 		scheduleSave(item.code, item.quantity);
@@ -83,8 +84,10 @@
 	}
 
 	let totalCount = $derived(items.length);
-	let haveCount = $derived(items.filter((i) => i.quantity > 0).length);
-	let dupCount = $derived(items.reduce((sum, i) => sum + Math.max(0, i.quantity - 1), 0));
+	let haveCount = $derived(items.filter((i) => i.groupQuantity > 0).length);
+	let dupCount = $derived(
+		items.reduce((sum, i) => sum + (group ? i.localDuplicateQuantity : Math.max(0, i.quantity - 1)), 0)
+	);
 	let globalPct = $derived(totalCount === 0 ? 0 : Math.round((haveCount / totalCount) * 100));
 
 	// Keyed by (section, team) since a team can have cards in two sections.
@@ -94,7 +97,7 @@
 			const key = cardKey(getSectionKey(item.team, item.code), item.team);
 			const stats = map.get(key) ?? { have: 0, total: 0 };
 			stats.total += 1;
-			if (item.quantity > 0) stats.have += 1;
+			if (item.groupQuantity > 0) stats.have += 1;
 			map.set(key, stats);
 		}
 		return map;
@@ -106,7 +109,7 @@
 			const key = getSectionKey(item.team, item.code);
 			const agg = map.get(key) ?? { have: 0, total: 0 };
 			agg.total += 1;
-			if (item.quantity > 0) agg.have += 1;
+			if (item.groupQuantity > 0) agg.have += 1;
 			map.set(key, agg);
 		}
 		return map;
@@ -119,9 +122,9 @@
 				q === '' || item.name.toLowerCase().includes(q) || item.code.toLowerCase().includes(q);
 			const matchesStatus =
 				statusFilter === 'all' ||
-				(statusFilter === 'have' && item.quantity > 0) ||
-				(statusFilter === 'missing' && item.quantity === 0) ||
-				(statusFilter === 'duplicate' && item.quantity > 1);
+				(statusFilter === 'have' && item.groupQuantity > 0) ||
+				(statusFilter === 'missing' && item.groupQuantity === 0) ||
+				(statusFilter === 'duplicate' && (group ? item.localDuplicateQuantity > 0 : item.quantity > 1));
 			return matchesQuery && matchesStatus;
 		});
 	});
@@ -144,7 +147,7 @@
 	// special) as a plain heading, teams underneath as the actual
 	// collapsible cards.
 	let sections = $derived.by(() => {
-		const bySection = new Map<SectionKey, Map<string, StickerItem[]>>();
+		const bySection = new Map<SectionKey, Map<string, CollaborativeStickerItem[]>>();
 		for (const item of filtered) {
 			const sectionKey = getSectionKey(item.team, item.code);
 			if (!bySection.has(sectionKey)) bySection.set(sectionKey, new Map());
@@ -170,7 +173,7 @@
 <div class="space-y-8 pb-16">
 	<section class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
 		<div class="mb-2 flex items-baseline justify-between">
-			<h1 class="text-lg font-semibold">Progreso general</h1>
+			<h1 class="text-lg font-semibold">{group ? group.name : 'Progreso general'}</h1>
 			<span class="text-2xl font-bold text-emerald-400">{globalPct}%</span>
 		</div>
 		<div class="h-2 w-full overflow-hidden rounded-full bg-slate-800">
@@ -270,7 +273,9 @@
 										class="flex flex-col items-center gap-1 rounded-lg border p-2 text-center {item.quantity >
 										0
 											? 'border-emerald-800 bg-emerald-950/30'
-											: 'border-slate-800 bg-slate-900/40'}"
+											: item.groupQuantity > 0
+												? 'border-sky-800 bg-sky-950/20'
+												: 'border-slate-800 bg-slate-900/40'}"
 									>
 										<button
 											type="button"
@@ -290,6 +295,16 @@
 												>{item.name}</span
 											>
 										</button>
+
+										{#if group}
+											<div class="flex w-full flex-wrap justify-center gap-1">
+												{#each group.members.filter((member) => item.memberQuantities[member.user_id] > 0) as member (member.user_id)}
+													<span title={member.display_name} class="rounded border border-slate-700 px-1 text-[10px] text-slate-300">
+														{member.display_name.slice(0, 2).toUpperCase()}{item.memberQuantities[member.user_id] > 1 ? `+${item.memberQuantities[member.user_id] - 1}` : ''}
+													</span>
+												{/each}
+											</div>
+										{/if}
 
 										{#if item.quantity > 0}
 											<div class="mt-0.5 flex shrink-0 items-center gap-1 text-xs">

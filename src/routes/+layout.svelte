@@ -63,6 +63,14 @@
 				>
 					Intercambio
 				</a>
+				<a
+					href="/grupo"
+					class="rounded-md px-3 py-1.5 {page.url.pathname.startsWith('/grupo')
+						? 'bg-emerald-600 text-white'
+						: 'text-slate-400 hover:bg-slate-800'}"
+				>
+					Grupo
+				</a>
 			</nav>
 		</header>
 	{/if}
