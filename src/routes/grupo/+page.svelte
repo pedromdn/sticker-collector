@@ -10,10 +10,22 @@
 		copied = true;
 		setTimeout(() => (copied = false), 1500);
 	}
+
+	function eventLabel(action: string, delta: number) {
+		if (action === 'traded') return delta > 0 ? 'recibio en intercambio' : 'entrego en intercambio';
+		return delta > 0 ? 'agrego' : 'resto';
+	}
+
+	function formatEventDate(value: string) {
+		return new Intl.DateTimeFormat('es-MX', {
+			dateStyle: 'short',
+			timeStyle: 'short'
+		}).format(new Date(value));
+	}
 </script>
 
 <svelte:head>
-	<title>Grupo colaborativo · Mi Album Mundial 2026</title>
+	<title>Grupo colaborativo - Mi Album Mundial 2026</title>
 </svelte:head>
 
 <div class="mx-auto max-w-2xl space-y-6 pb-16">
@@ -96,6 +108,35 @@
 				Salir del grupo
 			</button>
 		</form>
+
+		<section class="space-y-3 border-t border-slate-800 pt-5">
+			<div class="flex items-center justify-between">
+				<h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Historial del grupo</h2>
+				<span class="text-xs text-slate-600">Ultimos movimientos</span>
+			</div>
+			{#if data.history.length === 0}
+				<p class="rounded-lg border border-slate-800 bg-slate-900/30 px-3 py-4 text-center text-sm text-slate-500">
+					Todavia no hay movimientos registrados en este grupo.
+				</p>
+			{:else}
+				<ul class="max-h-80 space-y-1 overflow-y-auto pr-1">
+					{#each data.history as event (event.id)}
+						<li class="rounded-md border border-slate-800 bg-slate-900/30 px-3 py-2 text-sm">
+							<div class="flex items-center justify-between gap-3">
+								<span class="min-w-0">
+									<span class="block truncate font-medium text-slate-200">{event.actor_name ?? 'Miembro anterior'} {eventLabel(event.action, event.delta)}</span>
+									<span class="block truncate text-xs text-slate-500">#{event.sticker_code} - {event.sticker_name}</span>
+								</span>
+								<span class="shrink-0 text-right text-xs {event.delta > 0 ? 'text-emerald-400' : 'text-amber-400'}">
+									{event.delta > 0 ? '+' : ''}{event.delta}<br />
+									<span class="text-slate-600">{formatEventDate(event.created_at)}</span>
+								</span>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
 	{:else}
 		<div class="grid gap-4 sm:grid-cols-2">
 			<form method="post" action="?/create" use:enhance class="space-y-3 rounded-xl border border-slate-800 bg-slate-900/40 p-4">

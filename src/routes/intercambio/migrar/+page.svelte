@@ -106,8 +106,14 @@
 		if (!userId) return;
 		applying = true;
 		applyError = '';
-		const rows = changed.map((row) => ({ sticker_code: row.code, quantity: row.newQty }));
-		const { error } = await upsertUserStickers(data.supabase, userId, rows);
+		const rows = changed.map((row) => ({
+			sticker_code: row.code,
+			quantity: row.newQty,
+			previous_quantity: row.currentQty
+		}));
+		const { error } = await upsertUserStickers(data.supabase, userId, rows, {
+			groupId: data.group?.id
+		});
 		applying = false;
 		if (error) {
 			applyError = 'No se pudo guardar la migración. Intenta de nuevo.';

@@ -28,13 +28,16 @@
 	let session = $state({ processed: 0, added: 0, duplicates: 0, notFound: 0 });
 	let errorMessage = $state('');
 
-	async function persist(itemCode: string, quantity: number) {
+	async function persist(itemCode: string, quantity: number, previousQuantity: number) {
 		const userId = data.user?.id;
 		if (!userId) return;
 
-		const { error } = await upsertUserStickers(data.supabase, userId, [
-			{ sticker_code: itemCode, quantity }
-		]);
+		const { error } = await upsertUserStickers(
+			data.supabase,
+			userId,
+			[{ sticker_code: itemCode, quantity, previous_quantity: previousQuantity }],
+			{ groupId: data.group?.id }
+		);
 
 		if (error) {
 			errorMessage = 'No se pudo guardar el cambio. Intenta de nuevo.';
@@ -93,12 +96,13 @@
 
 		if (item.quantity > 0) {
 			errorMessage = '';
+			const previousQuantity = item.quantity;
 			item.quantity += 1;
 			outcome = { kind: 'duplicate', item };
 			session.processed += 1;
 			session.duplicates += 1;
 			pushHistory(outcome);
-			await persist(item.code, item.quantity);
+			await persist(item.code, item.quantity, previousQuantity);
 		} else {
 			outcome = { kind: 'pending-new', item };
 		}
@@ -129,7 +133,7 @@
 		session.processed += 1;
 		session.added += 1;
 		pushHistory(outcome);
-		await persist(item.code, 1);
+		await persist(item.code, 1, 0);
 		await focusInput();
 	}
 
@@ -141,12 +145,13 @@
 	// Duplicates auto-confirm without asking, so give a quick undo in case a
 	// typo or accidental repeat scan added a repeated sticker by mistake.
 	async function cancelDuplicate(item: StickerItem) {
+		const previousQuantity = item.quantity;
 		item.quantity -= 1;
 		session.processed -= 1;
 		session.duplicates -= 1;
 		history = history.slice(1);
 		outcome = null;
-		await persist(item.code, item.quantity);
+		await persist(item.code, item.quantity, previousQuantity);
 		await focusInput();
 	}
 

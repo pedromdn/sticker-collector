@@ -26,4 +26,20 @@ export type CollaborativeStickerItem = StickerItem & {
 	memberQuantities: Record<string, number>;
 };
 
+
+export type StickerEventAction = 'added' | 'removed' | 'traded';
+
+export type StickerHistoryEvent = {
+	id: string;
+	created_at: string;
+	user_id: string;
+	actor_name: string | null;
+	sticker_code: string;
+	sticker_name: string;
+	team: string;
+	action: StickerEventAction;
+	delta: number;
+	quantity_after: number;
+};
+
 export type StatusFilter = 'all' | 'have' | 'missing' | 'duplicate';

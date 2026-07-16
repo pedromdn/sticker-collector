@@ -13,10 +13,6 @@
 	let query = $state('');
 	let statusFilter = $state<StatusFilter>('all');
 	let errorMessage = $state('');
-	// Special-variant stickers (GER10s, etc.) live in their own section, so
-	// the same team can show up as two separate cards (e.g. "Germany" in
-	// Grupo E, and "Germany" again under Especiales). Card identity is the
-	// (section, team) pair, not the team alone.
 	let openCards = new SvelteSet<string>();
 
 	function cardKey(sectionKey: SectionKey, team: string) {
@@ -24,47 +20,75 @@
 	}
 
 	const pendingTimers = new Map<string, ReturnType<typeof setTimeout>>();
+	const pendingPrevious = new Map<string, number>();
 
-	async function persist(code: string, quantity: number) {
+	function eventLabel(action: string, delta: number) {
+		if (action === 'traded') return delta > 0 ? 'Recibida en intercambio' : 'Entregada en intercambio';
+		return delta > 0 ? 'Agregada' : 'Restada';
+	}
+
+	function formatEventDate(value: string) {
+		return new Intl.DateTimeFormat('es-MX', {
+			dateStyle: 'short',
+			timeStyle: 'short'
+		}).format(new Date(value));
+	}
+
+	async function persist(code: string, quantity: number, previousQuantity: number) {
 		const userId = data.user?.id;
 		if (!userId) return;
 
-		const { error } = await upsertUserStickers(data.supabase, userId, [
-			{ sticker_code: code, quantity }
-		]);
+		const { error } = await upsertUserStickers(
+			data.supabase,
+			userId,
+			[{ sticker_code: code, quantity, previous_quantity: previousQuantity }],
+			{ groupId: group?.id }
+		);
 
 		if (error) {
 			errorMessage = 'No se pudo guardar el cambio. Revisa tu conexión e intenta de nuevo.';
 		}
 	}
 
-	function scheduleSave(code: string, quantity: number) {
+	function scheduleSave(code: string, quantity: number, previousQuantity: number) {
 		errorMessage = '';
+		if (!pendingPrevious.has(code)) pendingPrevious.set(code, previousQuantity);
 		const existing = pendingTimers.get(code);
 		if (existing) clearTimeout(existing);
 		pendingTimers.set(
 			code,
 			setTimeout(() => {
 				pendingTimers.delete(code);
-				persist(code, quantity);
+				const previous = pendingPrevious.get(code) ?? quantity;
+				pendingPrevious.delete(code);
+				persist(code, quantity, previous);
 			}, 300)
 		);
 	}
 
+	function applyLocalQuantity(item: CollaborativeStickerItem, quantity: number) {
+		const previous = item.quantity;
+		const delta = quantity - previous;
+		item.quantity = quantity;
+		item.groupQuantity += delta;
+		item.memberQuantities[data.user!.id] = quantity;
+		if (group?.currentMember?.is_swap_local) {
+			item.localDuplicateQuantity += Math.max(0, quantity - 1) - Math.max(0, previous - 1);
+		}
+		scheduleSave(item.code, quantity, previous);
+	}
+
 	function toggleHave(item: CollaborativeStickerItem) {
-		item.quantity = item.quantity > 0 ? 0 : 1;
-		scheduleSave(item.code, item.quantity);
+		applyLocalQuantity(item, item.quantity > 0 ? 0 : 1);
 	}
 
 	function incDup(item: CollaborativeStickerItem) {
-		item.quantity += 1;
-		scheduleSave(item.code, item.quantity);
+		applyLocalQuantity(item, item.quantity + 1);
 	}
 
 	function decDup(item: CollaborativeStickerItem) {
 		if (item.quantity <= 1) return;
-		item.quantity -= 1;
-		scheduleSave(item.code, item.quantity);
+		applyLocalQuantity(item, item.quantity - 1);
 	}
 
 	function toggleCard(key: string) {
@@ -90,7 +114,7 @@
 	);
 	let globalPct = $derived(totalCount === 0 ? 0 : Math.round((haveCount / totalCount) * 100));
 
-	// Keyed by (section, team) since a team can have cards in two sections.
+	// Keyed by section and team for stable collapsible-card identity.
 	let cardStats = $derived.by(() => {
 		const map = new Map<string, { have: number; total: number }>();
 		for (const item of items) {
@@ -143,9 +167,8 @@
 		return set;
 	});
 
-	// Two-level layout: World Cup section (intro / Group A-L / history /
-	// special) as a plain heading, teams underneath as the actual
-	// collapsible cards.
+	// Two-level layout: World Cup section as a plain heading, teams underneath
+	// as the actual collapsible cards.
 	let sections = $derived.by(() => {
 		const bySection = new Map<SectionKey, Map<string, CollaborativeStickerItem[]>>();
 		for (const item of filtered) {
@@ -339,4 +362,33 @@
 	{#if sections.length === 0}
 		<p class="py-12 text-center text-slate-500">No hay stickers que coincidan con tu búsqueda.</p>
 	{/if}
+
+	<section class="space-y-3 border-t border-slate-800 pt-5">
+		<div class="flex items-center justify-between">
+			<h2 class="text-sm font-bold uppercase tracking-widest text-slate-300">Historial personal</h2>
+			<span class="text-xs text-slate-500">Ultimos movimientos</span>
+		</div>
+		{#if data.history.length === 0}
+			<p class="rounded-lg border border-slate-800 bg-slate-900/30 px-3 py-4 text-center text-sm text-slate-500">
+				Todavia no hay movimientos registrados.
+			</p>
+		{:else}
+			<ul class="max-h-80 space-y-1 overflow-y-auto pr-1">
+				{#each data.history as event (event.id)}
+					<li class="flex items-center gap-3 rounded-md border border-slate-800 bg-slate-900/30 px-3 py-2 text-sm">
+						<span class="text-lg leading-none">{getTeamFlag(event.team)}</span>
+						<span class="min-w-0 flex-1">
+							<span class="block truncate font-medium text-slate-200">{event.sticker_name}</span>
+							<span class="block text-xs text-slate-500">#{event.sticker_code} - {formatEventDate(event.created_at)}</span>
+						</span>
+						<span class="shrink-0 text-right text-xs {event.delta > 0 ? 'text-emerald-400' : 'text-amber-400'}">
+							{eventLabel(event.action, event.delta)}<br />
+							<span class="text-slate-500">{event.delta > 0 ? '+' : ''}{event.delta}</span>
+						</span>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</section>
+
 </div>

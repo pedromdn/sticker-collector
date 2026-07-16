@@ -1,5 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { CollaborationGroup, CollaborativeStickerItem, GroupMember, StickerItem } from '$lib/types';
+import type {
+	CollaborationGroup,
+	CollaborativeStickerItem,
+	GroupMember,
+	StickerHistoryEvent,
+	StickerItem
+} from '$lib/types';
 
 export async function loadCollectionItems(
 	supabase: SupabaseClient,
@@ -128,4 +134,59 @@ export async function loadCollaborativeCollection(
 			};
 		})
 	};
+}
+
+
+export async function loadStickerHistory(
+	supabase: SupabaseClient,
+	options: { userId?: string; groupId?: string; members?: GroupMember[]; limit?: number }
+): Promise<StickerHistoryEvent[]> {
+	let query = supabase
+		.from('sticker_events')
+		.select('id, created_at, user_id, sticker_code, action, delta, quantity_after')
+		.order('created_at', { ascending: false })
+		.limit(options.limit ?? 40);
+
+	if (options.groupId) {
+		query = query.eq('group_id', options.groupId);
+	} else if (options.userId) {
+		query = query.eq('user_id', options.userId);
+	} else {
+		return [];
+	}
+
+	const { data: events, error } = await query;
+	if (error) {
+		// Keep the app usable while the production database migration is being applied.
+		if (error.code === '42P01') return [];
+		throw error;
+	}
+	if (!events || events.length === 0) return [];
+
+	const codes = [...new Set(events.map((event) => event.sticker_code))];
+	const { data: stickers, error: stickersError } = await supabase
+		.from('stickers')
+		.select('code, name, team')
+		.in('code', codes);
+
+	if (stickersError) throw stickersError;
+
+	const stickerByCode = new Map((stickers ?? []).map((sticker) => [sticker.code, sticker]));
+	const memberById = new Map((options.members ?? []).map((member) => [member.user_id, member]));
+
+	return events.map((event) => {
+		const sticker = stickerByCode.get(event.sticker_code);
+		return {
+			id: event.id,
+			created_at: event.created_at,
+			user_id: event.user_id,
+			actor_name: memberById.get(event.user_id)?.display_name ?? null,
+			sticker_code: event.sticker_code,
+			sticker_name: sticker?.name ?? event.sticker_code,
+			team: sticker?.team ?? '',
+			action: event.action,
+			delta: event.delta,
+			quantity_after: event.quantity_after
+		};
+	});
 }

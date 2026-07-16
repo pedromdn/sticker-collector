@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import type { StickerItem } from '$lib/types';
+	import type { CollaborativeStickerItem } from '$lib/types';
 	import QRCode from 'qrcode';
 	import QrInput from '$lib/components/QrInput.svelte';
 	import { getTeamFlag } from '$lib/flags';
@@ -22,7 +22,7 @@
 	let { data }: { data: PageData } = $props();
 
 	type Step = 'scan' | 'review' | 'trade-review' | 'done';
-	type Candidate = { item: StickerItem; checked: boolean };
+	type Candidate = { item: CollaborativeStickerItem; checked: boolean };
 
 	let step = $state<Step>('scan');
 	let rawDecoded = $state<FiguritasCollection | null>(null);
@@ -94,7 +94,7 @@
 		return tradeDelta.entries
 			.filter((e) => e.iGave)
 			.map((e) => byCode.get(e.code))
-			.filter((item): item is StickerItem => item !== undefined);
+			.filter((item): item is CollaborativeStickerItem => item !== undefined);
 	});
 
 	let tradeReceivedItems = $derived.by(() => {
@@ -102,7 +102,7 @@
 		return tradeDelta.entries
 			.filter((e) => e.iReceived)
 			.map((e) => byCode.get(e.code))
-			.filter((item): item is StickerItem => item !== undefined);
+			.filter((item): item is CollaborativeStickerItem => item !== undefined);
 	});
 
 	// Rebuilds the suggested trade lists whenever a new code is decoded. Kept
@@ -131,15 +131,27 @@
 
 		const darRows = puedesDar
 			.filter((c) => c.checked)
-			.map((c) => ({ sticker_code: c.item.code, quantity: c.item.quantity - 1 }));
+			.map((c) => ({
+				sticker_code: c.item.code,
+				quantity: c.item.quantity - 1,
+				previous_quantity: c.item.quantity,
+				action: 'traded' as const
+			}));
 		const recibirRows = puedesRecibir
 			.filter((c) => c.checked)
-			.map((c) => ({ sticker_code: c.item.code, quantity: 1 }));
+			.map((c) => ({
+				sticker_code: c.item.code,
+				quantity: 1,
+				previous_quantity: c.item.quantity,
+				action: 'traded' as const
+			}));
 
-		const { error } = await upsertUserStickers(data.supabase, userId, [
-			...darRows,
-			...recibirRows
-		]);
+		const { error } = await upsertUserStickers(
+			data.supabase,
+			userId,
+			[...darRows, ...recibirRows],
+			{ groupId: data.group?.id }
+		);
 		applying = false;
 		if (error) {
 			applyError = 'No se pudo guardar el intercambio. Intenta de nuevo.';
@@ -177,17 +189,23 @@
 
 		const gaveRows = tradeGaveItems.map((item) => ({
 			sticker_code: item.code,
-			quantity: Math.max(0, item.quantity - 1)
+			quantity: Math.max(0, item.quantity - 1),
+			previous_quantity: item.quantity,
+			action: 'traded' as const
 		}));
 		const receivedRows = tradeReceivedItems.map((item) => ({
 			sticker_code: item.code,
-			quantity: item.quantity + 1
+			quantity: item.quantity + 1,
+			previous_quantity: item.quantity,
+			action: 'traded' as const
 		}));
 
-		const { error } = await upsertUserStickers(data.supabase, userId, [
-			...gaveRows,
-			...receivedRows
-		]);
+		const { error } = await upsertUserStickers(
+			data.supabase,
+			userId,
+			[...gaveRows, ...receivedRows],
+			{ groupId: data.group?.id }
+		);
 		applying = false;
 		if (error) {
 			applyError = 'No se pudo aplicar el intercambio. Intenta de nuevo.';

@@ -1,6 +1,6 @@
 import { fail, redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { loadCollaborationGroup } from '$lib/server/collection';
+import { loadCollaborationGroup, loadStickerHistory } from '$lib/server/collection';
 
 function clean(value: FormDataEntryValue | null) {
 	return String(value ?? '').trim();
@@ -8,7 +8,10 @@ function clean(value: FormDataEntryValue | null) {
 
 export const load: PageServerLoad = async ({ locals: { supabase, session } }) => {
 	const group = await loadCollaborationGroup(supabase, session!.user.id);
-	return { group };
+	const history = group
+		? await loadStickerHistory(supabase, { groupId: group.id, members: group.members, limit: 60 })
+		: [];
+	return { group, history };
 };
 
 export const actions: Actions = {

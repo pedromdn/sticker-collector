@@ -66,17 +66,15 @@ export const TEAM_GROUP: Record<string, string> = {
 	Panama: 'L'
 };
 
-export type SectionKey = 'intro' | `group-${(typeof GROUP_ORDER)[number]}` | 'history' | 'special';
+export type SectionKey = 'intro' | `group-${(typeof GROUP_ORDER)[number]}` | 'history';
 
-// Foil/variant stickers (code ends in "s", e.g. GER10s) are a separate
-// checklist from the base player card — kept out of the team's own group
-// section and collected together at the end instead.
+// Foil/variant stickers (code ends in "s", e.g. GER10s) display inside
+// their team section, but are still skipped when exporting Figuritas QR codes.
 export function isSpecialVariant(code: string): boolean {
 	return code.endsWith('s');
 }
 
 export function getSectionKey(team: string, code: string): SectionKey {
-	if (isSpecialVariant(code)) return 'special';
 	const group = TEAM_GROUP[team];
 	if (group) return `group-${group}` as SectionKey;
 	if (team === 'FIFA World Cup History') return 'history';
@@ -86,15 +84,13 @@ export function getSectionKey(team: string, code: string): SectionKey {
 export function getSectionLabel(key: SectionKey): string {
 	if (key === 'intro') return 'Introducción';
 	if (key === 'history') return 'Historia del Mundial';
-	if (key === 'special') return 'Especiales';
 	return `Grupo ${key.replace('group-', '')}`;
 }
 
 export const SECTION_ORDER: SectionKey[] = [
 	'intro',
 	...GROUP_ORDER.map((g) => `group-${g}` as SectionKey),
-	'history',
-	'special'
+	'history'
 ];
 
 // Figuritas' checklist (980 stickers) matches this app's catalog order minus

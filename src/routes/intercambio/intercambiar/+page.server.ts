@@ -1,7 +1,6 @@
 import type { PageServerLoad } from './$types';
-import { loadCollectionItems } from '$lib/server/collection';
+import { loadCollaborativeCollection } from '$lib/server/collection';
 
 export const load: PageServerLoad = async ({ locals: { supabase, session } }) => {
-	const items = await loadCollectionItems(supabase, session!.user.id);
-	return { items };
+	return loadCollaborativeCollection(supabase, session!.user.id);
 };

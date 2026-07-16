@@ -195,3 +195,41 @@ create policy "group members read each others sticker rows"
 				and theirs.user_id = user_stickers.user_id
 		)
 	);
+
+
+-- Audit trail for sticker changes. Rows are append-only: quantities remain in
+-- user_stickers, while this table records how they changed over time.
+create table if not exists public.sticker_events (
+	id uuid primary key default gen_random_uuid(),
+	user_id uuid not null references auth.users (id) on delete cascade,
+	group_id uuid references public.collection_groups (id) on delete set null,
+	sticker_code text not null references public.stickers (code) on delete cascade,
+	action text not null check (action in ('added', 'removed', 'traded')),
+	delta integer not null check (delta <> 0),
+	quantity_after integer not null check (quantity_after >= 0),
+	created_at timestamptz not null default now()
+);
+
+alter table public.sticker_events enable row level security;
+
+drop policy if exists "users and group members read sticker events" on public.sticker_events;
+create policy "users and group members read sticker events"
+	on public.sticker_events for select
+	to authenticated
+	using (
+		user_id = auth.uid()
+		or (group_id is not null and public.is_group_member(group_id, auth.uid()))
+	);
+
+drop policy if exists "users insert their own sticker events" on public.sticker_events;
+create policy "users insert their own sticker events"
+	on public.sticker_events for insert
+	to authenticated
+	with check (
+		user_id = auth.uid()
+		and (group_id is null or public.is_group_member(group_id, auth.uid()))
+	);
+
+create index if not exists sticker_events_user_id_created_at_idx on public.sticker_events (user_id, created_at desc);
+create index if not exists sticker_events_group_id_created_at_idx on public.sticker_events (group_id, created_at desc);
+create index if not exists sticker_events_sticker_code_idx on public.sticker_events (sticker_code);
