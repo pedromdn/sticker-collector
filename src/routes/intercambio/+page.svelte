@@ -34,4 +34,15 @@
 			recibir.
 		</p>
 	</a>
+
+	<a
+		href="/intercambio/mi-codigo"
+		class="block rounded-xl border border-slate-800 bg-slate-900/40 p-4 hover:bg-slate-800/60"
+	>
+		<h2 class="font-semibold text-slate-100">Mi código</h2>
+		<p class="mt-1 text-sm text-slate-400">
+			Genera tu propio código para que la otra persona lo escanee y sepa qué te falta y qué
+			tienes repetido.
+		</p>
+	</a>
 </div>

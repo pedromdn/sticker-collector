@@ -120,7 +120,8 @@
 			const matchesStatus =
 				statusFilter === 'all' ||
 				(statusFilter === 'have' && item.quantity > 0) ||
-				(statusFilter === 'missing' && item.quantity === 0);
+				(statusFilter === 'missing' && item.quantity === 0) ||
+				(statusFilter === 'duplicate' && item.quantity > 1);
 			return matchesQuery && matchesStatus;
 		});
 	});
@@ -194,7 +195,7 @@
 			class="w-full rounded-md border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500 sm:flex-1"
 		/>
 		<div class="flex gap-2">
-			{#each [['all', 'Todos'], ['have', 'Tengo'], ['missing', 'Me falta']] as [value, label] (value)}
+			{#each [['all', 'Todos'], ['have', 'Tengo'], ['missing', 'Me falta'], ['duplicate', 'Repetidas']] as [value, label] (value)}
 				<button
 					type="button"
 					onclick={() => (statusFilter = value as StatusFilter)}

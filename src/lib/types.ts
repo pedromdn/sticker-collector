@@ -5,4 +5,4 @@ export type StickerItem = {
 	quantity: number;
 };
 
-export type StatusFilter = 'all' | 'have' | 'missing';
+export type StatusFilter = 'all' | 'have' | 'missing' | 'duplicate';

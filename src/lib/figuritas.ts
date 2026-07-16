@@ -62,6 +62,12 @@ function base64ToBytes(b64: string): Uint8Array {
 	return bytes;
 }
 
+function bytesToBase64(bytes: Uint8Array): string {
+	let binary = '';
+	for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+	return btoa(binary);
+}
+
 async function gunzip(bytes: Uint8Array): Promise<Uint8Array> {
 	if (typeof DecompressionStream === 'undefined') {
 		throw new FiguritasUnsupportedError('Este navegador no soporta descompresión gzip nativa.');
@@ -75,10 +81,25 @@ async function gunzip(bytes: Uint8Array): Promise<Uint8Array> {
 	}
 }
 
+async function gzip(bytes: Uint8Array): Promise<Uint8Array> {
+	if (typeof CompressionStream === 'undefined') {
+		throw new FiguritasUnsupportedError('Este navegador no soporta compresión gzip nativa.');
+	}
+	const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(new CompressionStream('gzip'));
+	const buffer = await new Response(stream).arrayBuffer();
+	return new Uint8Array(buffer);
+}
+
 function bitAt(bytes: Uint8Array, index: number): boolean {
 	const byteIndex = index >> 3;
 	const bitIndex = index & 7;
 	return ((bytes[byteIndex] >> bitIndex) & 1) === 1;
+}
+
+function setBitAt(bytes: Uint8Array, index: number): void {
+	const byteIndex = index >> 3;
+	const bitIndex = index & 7;
+	bytes[byteIndex] |= 1 << bitIndex;
 }
 
 /**
@@ -109,4 +130,23 @@ export async function decodeFiguritasQr(
 	}));
 
 	return { entries, meta: { segmentABits: bitsA, segmentBBits: bitsB } };
+}
+
+export type FiguritasEncodeEntry = { missing: boolean; hasDuplicate: boolean };
+
+/**
+ * Encodes bit N of each segment from `entries[N]`, mirroring the layout
+ * `decodeFiguritasQr` expects — bit index N corresponds to the same
+ * `orderedCodes[N]` the entries were built from.
+ */
+export async function encodeFiguritasQr(entries: FiguritasEncodeEntry[]): Promise<string> {
+	const byteLength = Math.ceil(entries.length / 8);
+	const bytesA = new Uint8Array(byteLength);
+	const bytesB = new Uint8Array(byteLength);
+	entries.forEach((entry, i) => {
+		if (entry.missing) setBitAt(bytesA, i);
+		if (entry.hasDuplicate) setBitAt(bytesB, i);
+	});
+	const [gzA, gzB] = await Promise.all([gzip(bytesA), gzip(bytesB)]);
+	return `${QR_PREFIX}${bytesToBase64(gzA)};${bytesToBase64(gzB)}`;
 }
