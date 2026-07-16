@@ -314,7 +314,7 @@
 						</button>
 
 						{#if isOpen}
-							<div class="grid grid-cols-3 gap-2 border-t border-slate-800 px-3 pb-3 pt-3 sm:grid-cols-5">
+							<div class="grid grid-cols-4 gap-2 border-t border-slate-800 px-3 pb-3 pt-3 sm:grid-cols-5">
 								{#each teamItems as item (item.code)}
 									<div
 										class="flex flex-col items-center gap-1 rounded-lg border p-2 text-center {item.quantity >
@@ -330,7 +330,7 @@
 											class="flex w-full flex-col items-center gap-1"
 										>
 											<span
-												class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-base {item.quantity >
+												class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm {item.quantity >
 												0
 													? 'border-emerald-500 bg-emerald-500 text-slate-950'
 													: 'border-slate-600'}"
@@ -354,12 +354,12 @@
 										{/if}
 
 										{#if item.quantity > 0}
-											<div class="mt-1 flex shrink-0 items-center gap-2 text-sm">
+											<div class="mt-0.5 flex shrink-0 items-center gap-1.5 text-xs">
 												<button
 													type="button"
 													onclick={() => decDup(item)}
 													disabled={item.quantity <= 1}
-													class="flex h-8 w-8 items-center justify-center rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
+													class="flex h-6 w-6 items-center justify-center rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
 												>
 													−
 												</button>
@@ -367,7 +367,7 @@
 												<button
 													type="button"
 													onclick={() => incDup(item)}
-													class="flex h-8 w-8 items-center justify-center rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
+													class="flex h-6 w-6 items-center justify-center rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
 												>
 													+
 												</button>

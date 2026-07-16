@@ -3,6 +3,7 @@
 	import { onMount, type Snippet } from 'svelte';
 	import { invalidate } from '$app/navigation';
 	import { page } from '$app/state';
+	import { LayoutGrid, PlusCircle, ArrowLeftRight, Users } from 'lucide-svelte';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
@@ -19,15 +20,20 @@
 	});
 
 	const navItems = [
-		{ href: '/', label: 'Colección', icon: '🗂️', match: (path: string) => path === '/' },
-		{ href: '/agregar', label: 'Agregar', icon: '➕', match: (path: string) => path === '/agregar' },
+		{ href: '/', label: 'Colección', icon: LayoutGrid, match: (path: string) => path === '/' },
+		{
+			href: '/agregar',
+			label: 'Agregar',
+			icon: PlusCircle,
+			match: (path: string) => path === '/agregar'
+		},
 		{
 			href: '/intercambio',
 			label: 'Intercambio',
-			icon: '🔄',
+			icon: ArrowLeftRight,
 			match: (path: string) => path.startsWith('/intercambio')
 		},
-		{ href: '/grupo', label: 'Grupo', icon: '👥', match: (path: string) => path.startsWith('/grupo') }
+		{ href: '/grupo', label: 'Grupo', icon: Users, match: (path: string) => path.startsWith('/grupo') }
 	];
 </script>
 
@@ -56,10 +62,11 @@
 					{@const active = item.match(page.url.pathname)}
 					<a
 						href={item.href}
-						class="border-b-2 px-3 py-2.5 transition-colors {active
+						class="flex items-center gap-1.5 border-b-2 px-3 py-2.5 transition-colors {active
 							? 'border-emerald-500 text-emerald-400'
 							: 'border-transparent text-slate-400 hover:border-slate-700 hover:text-slate-200'}"
 					>
+						<item.icon class="h-4 w-4" strokeWidth={2} />
 						{item.label}
 					</a>
 				{/each}
@@ -78,7 +85,7 @@
 						? 'text-emerald-400'
 						: 'text-slate-500'}"
 				>
-					<span class="text-xl leading-none">{item.icon}</span>
+					<item.icon class="h-5 w-5" strokeWidth={2} />
 					{item.label}
 				</a>
 			{/each}
