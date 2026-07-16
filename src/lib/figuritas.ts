@@ -181,6 +181,30 @@ export async function decodeFiguritasTradeQr(
 	};
 }
 
+export type FiguritasTradeEncodeEntry = { iGave: boolean; iReceived: boolean };
+
+/**
+ * Encodes a post-trade delta QR from the generator's own perspective (the
+ * inverse of `decodeFiguritasTradeQr`'s labeling): segment A carries what
+ * the generator received, segment B what they gave — so a scanner applying
+ * `decodeFiguritasTradeQr` sees the mirror (segment A = scanner gave,
+ * segment B = scanner received). Verified against a real Figuritas-generated
+ * sample with this exact mapping. Prefixed with ';' to match the one leading
+ * field seen ahead of the "⋋~" marker on that sample, marking it as the
+ * delta flavor rather than a full snapshot.
+ */
+export async function encodeFiguritasTradeQr(entries: FiguritasTradeEncodeEntry[]): Promise<string> {
+	const byteLength = Math.ceil(entries.length / 8);
+	const bytesA = new Uint8Array(byteLength);
+	const bytesB = new Uint8Array(byteLength);
+	entries.forEach((entry, i) => {
+		if (entry.iReceived) setBitAt(bytesA, i);
+		if (entry.iGave) setBitAt(bytesB, i);
+	});
+	const [gzA, gzB] = await Promise.all([gzip(bytesA), gzip(bytesB)]);
+	return `;${QR_PREFIX}${bytesToBase64(gzA)};${bytesToBase64(gzB)}`;
+}
+
 export type FiguritasEncodeEntry = { missing: boolean; hasDuplicate: boolean };
 
 /**

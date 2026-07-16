@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import type { StickerItem } from '$lib/types';
+	import QRCode from 'qrcode';
 	import QrInput from '$lib/components/QrInput.svelte';
 	import { getTeamFlag } from '$lib/flags';
 	import { catalogOrderedCodes } from '$lib/groups';
@@ -8,6 +9,7 @@
 	import {
 		decodeFiguritasQr,
 		decodeFiguritasTradeQr,
+		encodeFiguritasTradeQr,
 		isFiguritasTradeQr,
 		FiguritasFormatError,
 		FiguritasUnsupportedError,
@@ -31,6 +33,10 @@
 	let puedesDar = $state<Candidate[]>([]);
 	let puedesRecibir = $state<Candidate[]>([]);
 	let doneSummary = $state({ given: 0, received: 0 });
+	let replyQrDataUrl = $state('');
+	let generatingReplyQr = $state(false);
+	let replyQrText = $state('');
+	let replyQrCopied = $state(false);
 
 	const orderedCodes = catalogOrderedCodes(data.items);
 
@@ -71,6 +77,14 @@
 		tradeDelta = null;
 		decodeError = '';
 		applyError = '';
+		replyQrDataUrl = '';
+		replyQrText = '';
+	}
+
+	async function copyReplyQrText() {
+		await navigator.clipboard.writeText(replyQrText);
+		replyQrCopied = true;
+		setTimeout(() => (replyQrCopied = false), 1500);
 	}
 
 	let byCode = $derived(new Map(data.items.map((item) => [item.code, item])));
@@ -132,6 +146,26 @@
 			return;
 		}
 		doneSummary = { given: darRows.length, received: recibirRows.length };
+
+		const gaveCodes = new Set(darRows.map((r) => r.sticker_code));
+		const receivedCodes = new Set(recibirRows.map((r) => r.sticker_code));
+		if (gaveCodes.size > 0 || receivedCodes.size > 0) {
+			generatingReplyQr = true;
+			try {
+				replyQrText = await encodeFiguritasTradeQr(
+					orderedCodes.map((code) => ({
+						iGave: gaveCodes.has(code),
+						iReceived: receivedCodes.has(code)
+					}))
+				);
+				replyQrDataUrl = await QRCode.toDataURL(replyQrText, { margin: 1, width: 320 });
+			} catch {
+				replyQrDataUrl = '';
+				replyQrText = '';
+			}
+			generatingReplyQr = false;
+		}
+
 		step = 'done';
 	}
 
@@ -354,6 +388,32 @@
 					Diste {doneSummary.given} · Recibiste {doneSummary.received}
 				</p>
 			</div>
+
+			{#if generatingReplyQr}
+				<p class="text-center text-sm text-slate-500">Generando código para la otra persona…</p>
+			{:else if replyQrDataUrl}
+				<div class="space-y-2">
+					<p class="text-sm text-slate-400">
+						Muéstrale este código a la otra persona (funciona también si usa Figuritas) para que
+						su colección se actualice sola, sin tener que rehacer el intercambio al revés.
+					</p>
+					<div class="flex justify-center rounded-xl border border-slate-800 bg-white p-4">
+						<img
+							src={replyQrDataUrl}
+							alt="Código QR con el intercambio confirmado"
+							class="h-auto w-full max-w-xs"
+						/>
+					</div>
+					<button
+						type="button"
+						onclick={copyReplyQrText}
+						class="w-full rounded-md border border-slate-700 py-2 text-sm text-slate-300 hover:bg-slate-800"
+					>
+						{replyQrCopied ? 'Copiado ✓' : 'Copiar código como texto'}
+					</button>
+				</div>
+			{/if}
+
 			<a
 				href="/"
 				class="block w-full rounded-md bg-emerald-600 py-2 text-center text-sm font-medium text-white hover:bg-emerald-500"
