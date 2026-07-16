@@ -17,6 +17,18 @@
 		});
 		return () => subscription.unsubscribe();
 	});
+
+	const navItems = [
+		{ href: '/', label: 'Colección', icon: '🗂️', match: (path: string) => path === '/' },
+		{ href: '/agregar', label: 'Agregar', icon: '➕', match: (path: string) => path === '/agregar' },
+		{
+			href: '/intercambio',
+			label: 'Intercambio',
+			icon: '🔄',
+			match: (path: string) => path.startsWith('/intercambio')
+		},
+		{ href: '/grupo', label: 'Grupo', icon: '👥', match: (path: string) => path.startsWith('/grupo') }
+	];
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-100">
@@ -38,44 +50,42 @@
 					</form>
 				</div>
 			</div>
-			<nav class="mx-auto flex max-w-3xl gap-1 px-4 pb-2 text-sm">
-				<a
-					href="/"
-					class="rounded-md px-3 py-1.5 {page.url.pathname === '/'
-						? 'bg-emerald-600 text-white'
-						: 'text-slate-400 hover:bg-slate-800'}"
-				>
-					Colección
-				</a>
-				<a
-					href="/agregar"
-					class="rounded-md px-3 py-1.5 {page.url.pathname === '/agregar'
-						? 'bg-emerald-600 text-white'
-						: 'text-slate-400 hover:bg-slate-800'}"
-				>
-					Agregar
-				</a>
-				<a
-					href="/intercambio"
-					class="rounded-md px-3 py-1.5 {page.url.pathname.startsWith('/intercambio')
-						? 'bg-emerald-600 text-white'
-						: 'text-slate-400 hover:bg-slate-800'}"
-				>
-					Intercambio
-				</a>
-				<a
-					href="/grupo"
-					class="rounded-md px-3 py-1.5 {page.url.pathname.startsWith('/grupo')
-						? 'bg-emerald-600 text-white'
-						: 'text-slate-400 hover:bg-slate-800'}"
-				>
-					Grupo
-				</a>
+			<!-- Tab bar, desktop/tablet only — mobile gets the fixed bottom bar. -->
+			<nav class="mx-auto hidden max-w-3xl gap-1 px-4 text-sm sm:flex">
+				{#each navItems as item (item.href)}
+					{@const active = item.match(page.url.pathname)}
+					<a
+						href={item.href}
+						class="border-b-2 px-3 py-2.5 transition-colors {active
+							? 'border-emerald-500 text-emerald-400'
+							: 'border-transparent text-slate-400 hover:border-slate-700 hover:text-slate-200'}"
+					>
+						{item.label}
+					</a>
+				{/each}
 			</nav>
 		</header>
+
+		<!-- Fixed bottom tab bar, mobile only. -->
+		<nav
+			class="fixed inset-x-0 bottom-0 z-10 flex border-t border-slate-800 bg-slate-950/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
+		>
+			{#each navItems as item (item.href)}
+				{@const active = item.match(page.url.pathname)}
+				<a
+					href={item.href}
+					class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] {active
+						? 'text-emerald-400'
+						: 'text-slate-500'}"
+				>
+					<span class="text-xl leading-none">{item.icon}</span>
+					{item.label}
+				</a>
+			{/each}
+		</nav>
 	{/if}
 
-	<main class="mx-auto max-w-3xl px-4 py-6">
+	<main class="mx-auto max-w-3xl px-4 py-6 {data.session ? 'pb-24 sm:pb-6' : ''}">
 		{@render children()}
 	</main>
 </div>

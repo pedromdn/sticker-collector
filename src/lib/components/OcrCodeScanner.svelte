@@ -13,7 +13,6 @@
 	let videoEl = $state<HTMLVideoElement>();
 	let starting = $state(true);
 	let cameraError = $state('');
-	let lastSeenText = $state('');
 
 	let canvasEl: HTMLCanvasElement;
 	let stream: MediaStream | undefined;
@@ -135,7 +134,6 @@
 			const {
 				data: { text }
 			} = await worker.recognize(canvasEl);
-			lastSeenText = text.trim();
 			const matched = matchStickerCode(text, knownCodes);
 			if (matched) {
 				const now = Date.now();
@@ -189,8 +187,3 @@
 	{/if}
 </div>
 
-{#if lastSeenText}
-	<p class="mt-1 text-center text-xs text-slate-600">
-		Último texto leído: <span class="font-mono">{lastSeenText}</span>
-	</p>
-{/if}

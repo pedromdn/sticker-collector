@@ -1,15 +1,17 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import type { PageData } from './$types';
-	import type { StickerItem } from '$lib/types';
+	import type { CollaborativeStickerItem } from '$lib/types';
 	import { getTeamFlag } from '$lib/flags';
 	import { upsertUserStickers } from '$lib/collectionMutations';
+	import { isAlbumComplete, isTeamComplete } from '$lib/completion';
 	import OcrCodeScanner from '$lib/components/OcrCodeScanner.svelte';
 	import NewStickerModal from '$lib/components/NewStickerModal.svelte';
+	import CelebrationBanner from '$lib/components/CelebrationBanner.svelte';
 
 	let { data }: { data: PageData } = $props();
 
-	let items = $state<StickerItem[]>(data.items.map((item) => ({ ...item })));
+	let items = $state<CollaborativeStickerItem[]>(data.items.map((item) => ({ ...item })));
 	let byCode = $derived.by(() => new Map(items.map((item) => [item.code.toUpperCase(), item])));
 	let knownCodes = $derived([...byCode.keys()]);
 
@@ -18,13 +20,31 @@
 	// waiting on a sign-then-download round trip at reveal time.
 	let midUrlCache = $state<Record<string, string>>({});
 
+	let celebration = $state<{ kind: 'team' | 'album'; label: string } | null>(null);
+	let celebrationTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function celebrate(kind: 'team' | 'album', label: string) {
+		if (celebrationTimer) clearTimeout(celebrationTimer);
+		celebration = { kind, label };
+		celebrationTimer = setTimeout(() => (celebration = null), 3500);
+	}
+
+	function checkCompletion(team: string) {
+		const hasIt = (item: CollaborativeStickerItem) => item.groupQuantity > 0;
+		if (isAlbumComplete(items, hasIt)) {
+			celebrate('album', '¡Álbum completo! 🏆');
+		} else if (isTeamComplete(items, team, hasIt)) {
+			celebrate('team', `¡Equipo completo: ${team}! 🎉`);
+		}
+	}
+
 	type InputMode = 'text' | 'camera';
 	let inputMode = $state<InputMode>('text');
 
 	type Outcome =
-		| { kind: 'duplicate'; item: StickerItem }
-		| { kind: 'pending-new'; item: StickerItem }
-		| { kind: 'added'; item: StickerItem }
+		| { kind: 'duplicate'; item: CollaborativeStickerItem }
+		| { kind: 'pending-new'; item: CollaborativeStickerItem }
+		| { kind: 'added'; item: CollaborativeStickerItem }
 		| { kind: 'not-found'; code: string };
 
 	let code = $state('');
@@ -104,6 +124,7 @@
 			errorMessage = '';
 			const previousQuantity = item.quantity;
 			item.quantity += 1;
+			item.groupQuantity += 1;
 			outcome = { kind: 'duplicate', item };
 			session.processed += 1;
 			session.duplicates += 1;
@@ -133,13 +154,15 @@
 		await processCode(raw);
 	}
 
-	async function confirmAdd(item: StickerItem) {
+	async function confirmAdd(item: CollaborativeStickerItem) {
 		item.quantity = 1;
+		item.groupQuantity += 1;
 		outcome = { kind: 'added', item };
 		session.processed += 1;
 		session.added += 1;
 		pushHistory(outcome);
 		await persist(item.code, 1, 0);
+		checkCompletion(item.team);
 		await focusInput();
 	}
 
@@ -150,9 +173,10 @@
 
 	// Duplicates auto-confirm without asking, so give a quick undo in case a
 	// typo or accidental repeat scan added a repeated sticker by mistake.
-	async function cancelDuplicate(item: StickerItem) {
+	async function cancelDuplicate(item: CollaborativeStickerItem) {
 		const previousQuantity = item.quantity;
 		item.quantity -= 1;
+		item.groupQuantity -= 1;
 		session.processed -= 1;
 		session.duplicates -= 1;
 		history = history.slice(1);
@@ -200,6 +224,8 @@
 <svelte:head>
 	<title>Agregar sticker · Mi Álbum Mundial 2026</title>
 </svelte:head>
+
+<CelebrationBanner {celebration} />
 
 <div class="mx-auto max-w-lg space-y-6 pb-16">
 	<div>

@@ -5,7 +5,9 @@
 	import { getTeamFlag } from '$lib/flags';
 	import { getSectionKey, getSectionLabel, SECTION_ORDER, type SectionKey } from '$lib/groups';
 	import { upsertUserStickers } from '$lib/collectionMutations';
+	import { isAlbumComplete, isTeamComplete } from '$lib/completion';
 	import StickerThumb from '$lib/components/StickerThumb.svelte';
+	import CelebrationBanner from '$lib/components/CelebrationBanner.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -15,6 +17,23 @@
 	let statusFilter = $state<StatusFilter>('all');
 	let errorMessage = $state('');
 	let openCards = new SvelteSet<string>();
+	let celebration = $state<{ kind: 'team' | 'album'; label: string } | null>(null);
+	let celebrationTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function celebrate(kind: 'team' | 'album', label: string) {
+		if (celebrationTimer) clearTimeout(celebrationTimer);
+		celebration = { kind, label };
+		celebrationTimer = setTimeout(() => (celebration = null), 3500);
+	}
+
+	function checkCompletion(team: string) {
+		const hasIt = (item: CollaborativeStickerItem) => item.groupQuantity > 0;
+		if (isAlbumComplete(items, hasIt)) {
+			celebrate('album', '¡Álbum completo! 🏆');
+		} else if (isTeamComplete(items, team, hasIt)) {
+			celebrate('team', `¡Equipo completo: ${team}! 🎉`);
+		}
+	}
 
 	function cardKey(sectionKey: SectionKey, team: string) {
 		return `${sectionKey}::${team}`;
@@ -80,7 +99,9 @@
 	}
 
 	function toggleHave(item: CollaborativeStickerItem) {
-		applyLocalQuantity(item, item.quantity > 0 ? 0 : 1);
+		const wasMissing = item.quantity === 0;
+		applyLocalQuantity(item, wasMissing ? 1 : 0);
+		if (wasMissing) checkCompletion(item.team);
 	}
 
 	function incDup(item: CollaborativeStickerItem) {
@@ -193,6 +214,8 @@
 <svelte:head>
 	<title>Mi Álbum Mundial 2026</title>
 </svelte:head>
+
+<CelebrationBanner {celebration} />
 
 <div class="space-y-8 pb-16">
 	<section class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
@@ -307,7 +330,7 @@
 											class="flex w-full flex-col items-center gap-1"
 										>
 											<span
-												class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-sm {item.quantity >
+												class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-base {item.quantity >
 												0
 													? 'border-emerald-500 bg-emerald-500 text-slate-950'
 													: 'border-slate-600'}"
@@ -331,12 +354,12 @@
 										{/if}
 
 										{#if item.quantity > 0}
-											<div class="mt-0.5 flex shrink-0 items-center gap-1 text-xs">
+											<div class="mt-1 flex shrink-0 items-center gap-2 text-sm">
 												<button
 													type="button"
 													onclick={() => decDup(item)}
 													disabled={item.quantity <= 1}
-													class="h-5 w-5 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
+													class="flex h-8 w-8 items-center justify-center rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
 												>
 													−
 												</button>
@@ -344,7 +367,7 @@
 												<button
 													type="button"
 													onclick={() => incDup(item)}
-													class="h-5 w-5 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
+													class="flex h-8 w-8 items-center justify-center rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
 												>
 													+
 												</button>
