@@ -7,20 +7,24 @@
 	import { upsertUserStickers } from '$lib/collectionMutations';
 	import {
 		decodeFiguritasQr,
+		decodeFiguritasTradeQr,
+		isFiguritasTradeQr,
 		FiguritasFormatError,
 		FiguritasUnsupportedError,
 		FiguritasDecodeError,
 		FiguritasLengthMismatchError,
-		type FiguritasCollection
+		type FiguritasCollection,
+		type FiguritasTradeDelta
 	} from '$lib/figuritas';
 
 	let { data }: { data: PageData } = $props();
 
-	type Step = 'scan' | 'review' | 'done';
+	type Step = 'scan' | 'review' | 'trade-review' | 'done';
 	type Candidate = { item: StickerItem; checked: boolean };
 
 	let step = $state<Step>('scan');
 	let rawDecoded = $state<FiguritasCollection | null>(null);
+	let tradeDelta = $state<FiguritasTradeDelta | null>(null);
 	let decodeError = $state('');
 	let applying = $state(false);
 	let applyError = $state('');
@@ -49,8 +53,13 @@
 	async function handleScan(text: string) {
 		decodeError = '';
 		try {
-			rawDecoded = await decodeFiguritasQr(text, orderedCodes);
-			step = 'review';
+			if (isFiguritasTradeQr(text)) {
+				tradeDelta = await decodeFiguritasTradeQr(text, orderedCodes);
+				step = 'trade-review';
+			} else {
+				rawDecoded = await decodeFiguritasQr(text, orderedCodes);
+				step = 'review';
+			}
 		} catch (err) {
 			decodeError = mapError(err);
 		}
@@ -59,9 +68,28 @@
 	function resetToScan() {
 		step = 'scan';
 		rawDecoded = null;
+		tradeDelta = null;
 		decodeError = '';
 		applyError = '';
 	}
+
+	let byCode = $derived(new Map(data.items.map((item) => [item.code, item])));
+
+	let tradeGaveItems = $derived.by(() => {
+		if (!tradeDelta) return [];
+		return tradeDelta.entries
+			.filter((e) => e.iGave)
+			.map((e) => byCode.get(e.code))
+			.filter((item): item is StickerItem => item !== undefined);
+	});
+
+	let tradeReceivedItems = $derived.by(() => {
+		if (!tradeDelta) return [];
+		return tradeDelta.entries
+			.filter((e) => e.iReceived)
+			.map((e) => byCode.get(e.code))
+			.filter((item): item is StickerItem => item !== undefined);
+	});
 
 	// Rebuilds the suggested trade lists whenever a new code is decoded. Kept
 	// as $state (not $derived) so per-row checkbox toggles below can mutate
@@ -104,6 +132,34 @@
 			return;
 		}
 		doneSummary = { given: darRows.length, received: recibirRows.length };
+		step = 'done';
+	}
+
+	async function confirmTradeDelta() {
+		const userId = data.user?.id;
+		if (!userId || !tradeDelta) return;
+		applying = true;
+		applyError = '';
+
+		const gaveRows = tradeGaveItems.map((item) => ({
+			sticker_code: item.code,
+			quantity: Math.max(0, item.quantity - 1)
+		}));
+		const receivedRows = tradeReceivedItems.map((item) => ({
+			sticker_code: item.code,
+			quantity: item.quantity + 1
+		}));
+
+		const { error } = await upsertUserStickers(data.supabase, userId, [
+			...gaveRows,
+			...receivedRows
+		]);
+		applying = false;
+		if (error) {
+			applyError = 'No se pudo aplicar el intercambio. Intenta de nuevo.';
+			return;
+		}
+		doneSummary = { given: gaveRows.length, received: receivedRows.length };
 		step = 'done';
 	}
 </script>
@@ -211,6 +267,83 @@
 				class="flex-1 rounded-md bg-emerald-600 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-60"
 			>
 				{applying ? 'Guardando…' : 'Confirmar intercambio'}
+			</button>
+		</div>
+	{:else if step === 'trade-review' && tradeDelta}
+		<p class="text-sm text-slate-400">
+			Este código ya trae un intercambio confirmado por la otra persona. Revisa y aplica los
+			cambios a tu colección.
+		</p>
+
+		{#if applyError}
+			<div class="rounded-lg border border-red-800 bg-red-950/50 px-4 py-2 text-sm text-red-300">
+				{applyError}
+			</div>
+		{/if}
+
+		<div class="grid gap-4 sm:grid-cols-2">
+			<div>
+				<h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+					Vas a dar ({tradeGaveItems.length})
+				</h2>
+				{#if tradeGaveItems.length === 0}
+					<p class="text-sm text-slate-600">Nada.</p>
+				{:else}
+					<ul class="space-y-1.5">
+						{#each tradeGaveItems as item (item.code)}
+							<li
+								class="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
+							>
+								<span class="text-lg leading-none">{getTeamFlag(item.team)}</span>
+								<span class="min-w-0 flex-1">
+									<span class="block truncate text-sm font-medium">{item.name}</span>
+									<span class="block text-xs text-slate-500">#{item.code}</span>
+								</span>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
+
+			<div>
+				<h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+					Vas a recibir ({tradeReceivedItems.length})
+				</h2>
+				{#if tradeReceivedItems.length === 0}
+					<p class="text-sm text-slate-600">Nada.</p>
+				{:else}
+					<ul class="space-y-1.5">
+						{#each tradeReceivedItems as item (item.code)}
+							<li
+								class="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
+							>
+								<span class="text-lg leading-none">{getTeamFlag(item.team)}</span>
+								<span class="min-w-0 flex-1">
+									<span class="block truncate text-sm font-medium">{item.name}</span>
+									<span class="block text-xs text-slate-500">#{item.code}</span>
+								</span>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
+		</div>
+
+		<div class="mx-auto flex max-w-lg gap-2">
+			<button
+				type="button"
+				onclick={resetToScan}
+				class="flex-1 rounded-md border border-slate-700 py-2 text-sm text-slate-300 hover:bg-slate-800"
+			>
+				Cancelar
+			</button>
+			<button
+				type="button"
+				onclick={confirmTradeDelta}
+				disabled={applying}
+				class="flex-1 rounded-md bg-emerald-600 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-60"
+			>
+				{applying ? 'Guardando…' : 'Aplicar cambios'}
 			</button>
 		</div>
 	{:else if step === 'done'}

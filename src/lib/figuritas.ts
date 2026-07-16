@@ -7,6 +7,14 @@
 // base64-encoded. Each decompressed segment is a bitset, LSB-first within
 // each byte (verified against a sample: with this order the trailing
 // padding bits land cleanly on 0; MSB-first does not).
+//
+// There is a second QR flavor Figuritas emits right after confirming a
+// trade: "<anything>;⋋~<base64A>;<base64B>" — same envelope, just preceded
+// by an extra ';'-delimited field (empty in the one sample seen). Instead of
+// a full collection snapshot, the bitsets there are sparse deltas for just
+// the traded stickers: verified against a real trade (give CAN6, receive
+// MEX11+RSA5) that segment A = "I gave this" and segment B = "I received
+// this" — the mirror image of what the *other* person should apply.
 
 const QR_PREFIX = '⋋~';
 
@@ -42,12 +50,26 @@ export type FiguritasCollection = {
 
 function parseQrEnvelope(raw: string): { segmentA: string; segmentB: string } {
 	const trimmed = raw.trim();
-	const withoutPrefix = trimmed.startsWith(QR_PREFIX) ? trimmed.slice(QR_PREFIX.length) : trimmed;
+	const prefixIndex = trimmed.indexOf(QR_PREFIX);
+	if (prefixIndex === -1) {
+		throw new FiguritasFormatError('El código no tiene el formato esperado de Figuritas.');
+	}
+	const withoutPrefix = trimmed.slice(prefixIndex + QR_PREFIX.length);
 	const parts = withoutPrefix.split(';');
 	if (parts.length !== 2 || !parts[0] || !parts[1]) {
 		throw new FiguritasFormatError('El código no tiene el formato esperado de Figuritas.');
 	}
 	return { segmentA: parts[0], segmentB: parts[1] };
+}
+
+/**
+ * True when `raw` carries something before the "⋋~" marker — the signature
+ * of the post-trade delta flavor rather than a full collection snapshot.
+ */
+export function isFiguritasTradeQr(raw: string): boolean {
+	const trimmed = raw.trim();
+	const prefixIndex = trimmed.indexOf(QR_PREFIX);
+	return prefixIndex > 0;
 }
 
 function base64ToBytes(b64: string): Uint8Array {
@@ -130,6 +152,33 @@ export async function decodeFiguritasQr(
 	}));
 
 	return { entries, meta: { segmentABits: bitsA, segmentBBits: bitsB } };
+}
+
+export type FiguritasTradeEntry = { code: string; iGave: boolean; iReceived: boolean };
+
+export type FiguritasTradeDelta = {
+	entries: FiguritasTradeEntry[];
+	meta: { segmentABits: number; segmentBBits: number };
+};
+
+/**
+ * Decodes a post-trade delta QR: same bitset layout as `decodeFiguritasQr`,
+ * relabeled per the confirmed polarity (segment A = codes given away,
+ * segment B = codes received) instead of the full-snapshot's missing/dup.
+ */
+export async function decodeFiguritasTradeQr(
+	raw: string,
+	orderedCodes: string[]
+): Promise<FiguritasTradeDelta> {
+	const collection = await decodeFiguritasQr(raw, orderedCodes);
+	return {
+		entries: collection.entries.map((entry) => ({
+			code: entry.code,
+			iGave: entry.missing,
+			iReceived: entry.hasDuplicate
+		})),
+		meta: collection.meta
+	};
 }
 
 export type FiguritasEncodeEntry = { missing: boolean; hasDuplicate: boolean };
