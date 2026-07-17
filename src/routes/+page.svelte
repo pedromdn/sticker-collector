@@ -316,45 +316,56 @@
 						{#if isOpen}
 							<div class="grid grid-cols-4 gap-2 border-t border-slate-800 px-3 pb-3 pt-3 sm:grid-cols-5">
 								{#each teamItems as item (item.code)}
+									<!-- Compact tile: the code pill doubles as the "have it" toggle
+									     (fill color = state, no separate checkmark row), and group
+									     badges overlay the corner instead of taking a row. -->
 									<div
-										class="flex flex-col items-center gap-1 rounded-lg border p-2 text-center {item.quantity >
+										class="relative flex flex-col items-center gap-1 rounded-lg border p-1.5 pt-2 text-center {item.quantity >
 										0
 											? 'border-emerald-800 bg-emerald-950/30'
 											: item.groupQuantity > 0
 												? 'border-sky-800 bg-sky-950/20'
 												: 'border-slate-800 bg-slate-900/40'}"
 									>
+										{#if group}
+											<div class="absolute -right-1 -top-1.5 flex -space-x-1">
+												{#each group.members.filter((member) => item.memberQuantities[member.user_id] > 0) as member (member.user_id)}
+													<span
+														title={member.display_name}
+														class="rounded-full border border-slate-600 bg-slate-900 px-1 text-[9px] leading-4 text-slate-300"
+													>
+														{member.display_name.slice(0, 2).toUpperCase()}{item.memberQuantities[
+															member.user_id
+														] > 1
+															? `+${item.memberQuantities[member.user_id] - 1}`
+															: ''}
+													</span>
+												{/each}
+											</div>
+										{/if}
+
 										<button
 											type="button"
 											onclick={() => toggleHave(item)}
 											class="flex w-full flex-col items-center gap-1"
 										>
 											<span
-												class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm {item.quantity >
+												class="w-full rounded-full border px-1 py-0.5 font-mono text-[11px] font-semibold {item.quantity >
 												0
 													? 'border-emerald-500 bg-emerald-500 text-slate-950'
-													: 'border-slate-600'}"
+													: item.groupQuantity > 0
+														? 'border-sky-700 text-sky-300'
+														: 'border-slate-600 text-slate-400'}"
 											>
-												{#if item.quantity > 0}✓{/if}
+												{item.code}
 											</span>
-											<span class="w-full truncate text-[11px] text-slate-500">#{item.code}</span>
 											<span class="line-clamp-2 w-full text-xs font-medium leading-tight"
 												>{item.name}</span
 											>
 										</button>
 
-										{#if group}
-											<div class="flex w-full flex-wrap justify-center gap-1">
-												{#each group.members.filter((member) => item.memberQuantities[member.user_id] > 0) as member (member.user_id)}
-													<span title={member.display_name} class="rounded border border-slate-700 px-1 text-[10px] text-slate-300">
-														{member.display_name.slice(0, 2).toUpperCase()}{item.memberQuantities[member.user_id] > 1 ? `+${item.memberQuantities[member.user_id] - 1}` : ''}
-													</span>
-												{/each}
-											</div>
-										{/if}
-
 										{#if item.quantity > 0}
-											<div class="mt-0.5 flex shrink-0 items-center gap-1.5 text-xs">
+											<div class="flex shrink-0 items-center gap-1.5 text-xs">
 												<button
 													type="button"
 													onclick={() => decDup(item)}
