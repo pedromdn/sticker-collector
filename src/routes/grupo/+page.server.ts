@@ -1,17 +1,21 @@
 import { fail, redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { loadCollaborationGroup, loadStickerHistory } from '$lib/server/collection';
+import { loadStickerHistory } from '$lib/server/collection';
 
 function clean(value: FormDataEntryValue | null) {
 	return String(value ?? '').trim();
 }
 
-export const load: PageServerLoad = async ({ locals: { supabase, session } }) => {
-	const group = await loadCollaborationGroup(supabase, session!.user.id);
-	const history = group
-		? await loadStickerHistory(supabase, { groupId: group.id, members: group.members, limit: 60 })
-		: [];
-	return { group, history };
+export const load: PageServerLoad = async ({ locals: { supabase }, parent }) => {
+	// group already comes from the root layout — reuse it instead of
+	// querying it again. History is group-scoped so it still has to wait on
+	// that, but it's streamed (not awaited) so it doesn't block the render.
+	const { group } = await parent();
+	return {
+		history: group
+			? loadStickerHistory(supabase, { groupId: group.id, members: group.members, limit: 60 })
+			: Promise.resolve([])
+	};
 };
 
 export const actions: Actions = {

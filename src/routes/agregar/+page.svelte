@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import { invalidate } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { CollaborativeStickerItem } from '$lib/types';
 	import { getTeamFlag } from '$lib/flags';
@@ -67,7 +68,10 @@
 
 		if (error) {
 			errorMessage = 'No se pudo guardar el cambio. Intenta de nuevo.';
+			return;
 		}
+
+		invalidate('app:collection');
 	}
 
 	function pushHistory(entry: Outcome) {

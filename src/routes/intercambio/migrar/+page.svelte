@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidate } from '$app/navigation';
 	import type { PageData } from './$types';
 	import QrInput from '$lib/components/QrInput.svelte';
 	import { catalogOrderedCodes, getSectionKey, getSectionLabel, SECTION_ORDER } from '$lib/groups';
@@ -119,6 +120,7 @@
 			applyError = 'No se pudo guardar la migración. Intenta de nuevo.';
 			return;
 		}
+		invalidate('app:collection');
 		appliedCount = changed.length;
 		step = 'done';
 	}

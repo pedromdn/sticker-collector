@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidate } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { CollaborativeStickerItem } from '$lib/types';
 	import QRCode from 'qrcode';
@@ -157,6 +158,7 @@
 			applyError = 'No se pudo guardar el intercambio. Intenta de nuevo.';
 			return;
 		}
+		invalidate('app:collection');
 		doneSummary = { given: darRows.length, received: recibirRows.length };
 
 		const gaveCodes = new Set(darRows.map((r) => r.sticker_code));
@@ -211,6 +213,7 @@
 			applyError = 'No se pudo aplicar el intercambio. Intenta de nuevo.';
 			return;
 		}
+		invalidate('app:collection');
 		doneSummary = { given: gaveRows.length, received: receivedRows.length };
 		step = 'done';
 	}

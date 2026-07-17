@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { SvelteSet } from 'svelte/reactivity';
+	import { invalidate } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { CollaborativeStickerItem, StatusFilter } from '$lib/types';
 	import { getTeamFlag } from '$lib/flags';
@@ -67,7 +68,12 @@
 
 		if (error) {
 			errorMessage = 'No se pudo guardar el cambio. Revisa tu conexión e intenta de nuevo.';
+			return;
 		}
+
+		// Refreshes the shared layout data in the background so navigating to
+		// another page (Agregar, Intercambio) doesn't show a stale snapshot.
+		invalidate('app:collection');
 	}
 
 	function scheduleSave(code: string, quantity: number, previousQuantity: number) {
@@ -399,27 +405,33 @@
 			<h2 class="text-sm font-bold uppercase tracking-widest text-slate-300">Historial personal</h2>
 			<span class="text-xs text-slate-500">Ultimos movimientos</span>
 		</div>
-		{#if data.history.length === 0}
+		{#await data.history}
 			<p class="rounded-lg border border-slate-800 bg-slate-900/30 px-3 py-4 text-center text-sm text-slate-500">
-				Todavia no hay movimientos registrados.
+				Cargando historial…
 			</p>
-		{:else}
-			<ul class="max-h-80 space-y-1 overflow-y-auto pr-1">
-				{#each data.history as event (event.id)}
-					<li class="flex items-center gap-3 rounded-md border border-slate-800 bg-slate-900/30 px-3 py-2 text-sm">
-						<StickerThumb img={event.img} team={event.team} alt={event.sticker_name} class="h-8 w-8" />
-						<span class="min-w-0 flex-1">
-							<span class="block truncate font-medium text-slate-200">{event.sticker_name}</span>
-							<span class="block text-xs text-slate-500">#{event.sticker_code} - {formatEventDate(event.created_at)}</span>
-						</span>
-						<span class="shrink-0 text-right text-xs {event.delta > 0 ? 'text-emerald-400' : 'text-amber-400'}">
-							{eventLabel(event.action, event.delta)}<br />
-							<span class="text-slate-500">{event.delta > 0 ? '+' : ''}{event.delta}</span>
-						</span>
-					</li>
-				{/each}
-			</ul>
-		{/if}
+		{:then history}
+			{#if history.length === 0}
+				<p class="rounded-lg border border-slate-800 bg-slate-900/30 px-3 py-4 text-center text-sm text-slate-500">
+					Todavia no hay movimientos registrados.
+				</p>
+			{:else}
+				<ul class="max-h-80 space-y-1 overflow-y-auto pr-1">
+					{#each history as event (event.id)}
+						<li class="flex items-center gap-3 rounded-md border border-slate-800 bg-slate-900/30 px-3 py-2 text-sm">
+							<StickerThumb img={event.img} team={event.team} alt={event.sticker_name} class="h-8 w-8" />
+							<span class="min-w-0 flex-1">
+								<span class="block truncate font-medium text-slate-200">{event.sticker_name}</span>
+								<span class="block text-xs text-slate-500">#{event.sticker_code} - {formatEventDate(event.created_at)}</span>
+							</span>
+							<span class="shrink-0 text-right text-xs {event.delta > 0 ? 'text-emerald-400' : 'text-amber-400'}">
+								{eventLabel(event.action, event.delta)}<br />
+								<span class="text-slate-500">{event.delta > 0 ? '+' : ''}{event.delta}</span>
+							</span>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		{/await}
 	</section>
 
 </div>

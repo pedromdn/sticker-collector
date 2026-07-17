@@ -115,31 +115,37 @@
 				<h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Historial del grupo</h2>
 				<span class="text-xs text-slate-600">Ultimos movimientos</span>
 			</div>
-			{#if data.history.length === 0}
+			{#await data.history}
 				<p class="rounded-lg border border-slate-800 bg-slate-900/30 px-3 py-4 text-center text-sm text-slate-500">
-					Todavia no hay movimientos registrados en este grupo.
+					Cargando historial…
 				</p>
-			{:else}
-				<ul class="max-h-80 space-y-1 overflow-y-auto pr-1">
-					{#each data.history as event (event.id)}
-						<li class="rounded-md border border-slate-800 bg-slate-900/30 px-3 py-2 text-sm">
-							<div class="flex items-center gap-3">
-								<StickerThumb img={event.img} team={event.team} alt={event.sticker_name} class="h-8 w-8" />
-								<div class="flex min-w-0 flex-1 items-center justify-between gap-3">
-									<span class="min-w-0">
-										<span class="block truncate font-medium text-slate-200">{event.actor_name ?? 'Miembro anterior'} {eventLabel(event.action, event.delta)}</span>
-										<span class="block truncate text-xs text-slate-500">#{event.sticker_code} - {event.sticker_name}</span>
-									</span>
-									<span class="shrink-0 text-right text-xs {event.delta > 0 ? 'text-emerald-400' : 'text-amber-400'}">
-										{event.delta > 0 ? '+' : ''}{event.delta}<br />
-										<span class="text-slate-600">{formatEventDate(event.created_at)}</span>
-									</span>
+			{:then history}
+				{#if history.length === 0}
+					<p class="rounded-lg border border-slate-800 bg-slate-900/30 px-3 py-4 text-center text-sm text-slate-500">
+						Todavia no hay movimientos registrados en este grupo.
+					</p>
+				{:else}
+					<ul class="max-h-80 space-y-1 overflow-y-auto pr-1">
+						{#each history as event (event.id)}
+							<li class="rounded-md border border-slate-800 bg-slate-900/30 px-3 py-2 text-sm">
+								<div class="flex items-center gap-3">
+									<StickerThumb img={event.img} team={event.team} alt={event.sticker_name} class="h-8 w-8" />
+									<div class="flex min-w-0 flex-1 items-center justify-between gap-3">
+										<span class="min-w-0">
+											<span class="block truncate font-medium text-slate-200">{event.actor_name ?? 'Miembro anterior'} {eventLabel(event.action, event.delta)}</span>
+											<span class="block truncate text-xs text-slate-500">#{event.sticker_code} - {event.sticker_name}</span>
+										</span>
+										<span class="shrink-0 text-right text-xs {event.delta > 0 ? 'text-emerald-400' : 'text-amber-400'}">
+											{event.delta > 0 ? '+' : ''}{event.delta}<br />
+											<span class="text-slate-600">{formatEventDate(event.created_at)}</span>
+										</span>
+									</div>
 								</div>
-							</div>
-						</li>
-					{/each}
-				</ul>
-			{/if}
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			{/await}
 		</section>
 	{:else}
 		<div class="grid gap-4 sm:grid-cols-2">
