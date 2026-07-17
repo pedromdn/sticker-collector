@@ -345,7 +345,7 @@
 										<button
 											type="button"
 											onclick={() => toggleHave(item)}
-											class="flex w-full flex-col items-center gap-1"
+											class="flex w-full flex-col items-center gap-2"
 										>
 											<span
 												class="w-full rounded-full border px-1 py-0.5 font-mono text-[11px] font-semibold {item.groupQuantity >
