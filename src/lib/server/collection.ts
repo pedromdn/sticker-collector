@@ -74,8 +74,12 @@ export async function loadCollaborativeCollection(
 	supabase: SupabaseClient,
 	userId: string
 ): Promise<{ group: CollaborationGroup | null; items: CollaborativeStickerItem[] }> {
-	const group = await loadCollaborationGroup(supabase, userId);
-	const ownItems = await loadCollectionItems(supabase, userId);
+	// Independent of each other — run concurrently rather than waterfalling,
+	// this alone cuts a full network round trip off every page load.
+	const [group, ownItems] = await Promise.all([
+		loadCollaborationGroup(supabase, userId),
+		loadCollectionItems(supabase, userId)
+	]);
 
 	if (!group) {
 		return {
