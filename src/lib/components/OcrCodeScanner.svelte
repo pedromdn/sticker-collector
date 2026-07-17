@@ -31,10 +31,14 @@
 	const INTERVAL_MS = 700;
 	const COOLDOWN_MS = 2000;
 
-	// Top-right corner, as a fraction of the video's native frame — matches
-	// where Panini prints the code on the sticker back. No CSS aspect-ratio
-	// cropping is applied to the <video> so this maps 1:1 onto what's shown.
-	const GUIDE = { x: 0.45, y: 0.06, w: 0.5, h: 0.22 };
+	// Small, centered box sized for just the printed code — not the whole
+	// sticker corner. Mid-range phone cameras can't focus closer than
+	// ~8-10cm, so the user needs to hold the sticker farther away; a tighter
+	// target means the code still fills the box at that distance. The lost
+	// native pixels are bought back with the higher capture resolution below.
+	// No CSS aspect-ratio cropping is applied to the <video> so these
+	// fractions map 1:1 onto what's shown.
+	const GUIDE = { x: 0.3, y: 0.4, w: 0.4, h: 0.16 };
 
 	onMount(async () => {
 		canvasEl = document.createElement('canvas');
@@ -43,8 +47,8 @@
 			stream = await navigator.mediaDevices.getUserMedia({
 				video: {
 					facingMode: 'environment',
-					width: { ideal: 1280 },
-					height: { ideal: 960 }
+					width: { ideal: 1920 },
+					height: { ideal: 1440 }
 				}
 			});
 		} catch {
@@ -56,6 +60,17 @@
 		if (destroyed) {
 			stream.getTracks().forEach((t) => t.stop());
 			return;
+		}
+
+		// Ask for continuous autofocus where the browser exposes it (mostly
+		// Android Chrome). Best-effort: unsupported constraints just reject.
+		const [track] = stream.getVideoTracks();
+		try {
+			await track.applyConstraints({
+				advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet]
+			});
+		} catch {
+			// Not supported — the camera keeps its default focus behavior.
 		}
 
 		if (videoEl) {
@@ -109,7 +124,11 @@
 		const sw = Math.round(vw * GUIDE.w);
 		const sh = Math.round(vh * GUIDE.h);
 
-		const scale = 1.5;
+		// Upscale to a fixed width rather than a fixed factor: the guide box is
+		// now small, so its native pixel size varies a lot with camera
+		// resolution, and Tesseract needs the glyphs comfortably large.
+		const TARGET_WIDTH = 700;
+		const scale = Math.max(1, TARGET_WIDTH / sw);
 		canvasEl.width = Math.round(sw * scale);
 		canvasEl.height = Math.round(sh * scale);
 		const ctx = canvasEl.getContext('2d');
@@ -175,7 +194,8 @@
 		<p
 			class="pointer-events-none absolute bottom-2 left-0 right-0 px-2 text-center text-xs text-white drop-shadow"
 		>
-			Alinea el código (esquina superior derecha del reverso) dentro del recuadro
+			Alinea solo el código (esquina superior derecha del reverso) dentro del recuadro — puedes
+			alejar el teléfono hasta que enfoque bien
 		</p>
 		{#if starting}
 			<div
