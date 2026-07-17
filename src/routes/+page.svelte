@@ -320,12 +320,10 @@
 									     (fill color = state, no separate checkmark row), and group
 									     badges overlay the corner instead of taking a row. -->
 									<div
-										class="relative flex flex-col items-center gap-1 rounded-lg border p-1.5 pt-2 text-center {item.quantity >
+										class="relative flex flex-col items-center gap-1 rounded-lg border p-1.5 pt-2 text-center {item.groupQuantity >
 										0
 											? 'border-emerald-800 bg-emerald-950/30'
-											: item.groupQuantity > 0
-												? 'border-sky-800 bg-sky-950/20'
-												: 'border-slate-800 bg-slate-900/40'}"
+											: 'border-slate-800 bg-slate-900/40'}"
 									>
 										{#if group}
 											<div class="absolute -right-1 -top-1.5 flex -space-x-1">
@@ -350,12 +348,10 @@
 											class="flex w-full flex-col items-center gap-1"
 										>
 											<span
-												class="w-full rounded-full border px-1 py-0.5 font-mono text-[11px] font-semibold {item.quantity >
+												class="w-full rounded-full border px-1 py-0.5 font-mono text-[11px] font-semibold {item.groupQuantity >
 												0
 													? 'border-emerald-500 bg-emerald-500 text-slate-950'
-													: item.groupQuantity > 0
-														? 'border-sky-700 text-sky-300'
-														: 'border-slate-600 text-slate-400'}"
+													: 'border-slate-600 text-slate-400'}"
 											>
 												{item.code}
 											</span>
