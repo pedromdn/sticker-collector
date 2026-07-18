@@ -7,6 +7,33 @@ import type {
 	StickerItem
 } from '$lib/types';
 
+const FALLBACK_SPECIAL_STICKERS: Array<Omit<StickerItem, 'quantity'>> = [
+	{ code: 'FWC9', name: 'Italy 1934', team: 'FIFA World Cup History', img: null },
+	{ code: 'FWC10', name: 'Uruguay 1950', team: 'FIFA World Cup History', img: null },
+	{ code: 'FWC11', name: 'West Germany 1954', team: 'FIFA World Cup History', img: null },
+	{ code: 'FWC12', name: 'Brazil 1962', team: 'FIFA World Cup History', img: '0147.png' },
+	{ code: 'FWC13', name: 'West Germany 1974', team: 'FIFA World Cup History', img: null },
+	{ code: 'FWC14', name: 'Argentina 1986', team: 'FIFA World Cup History', img: '0069.png' },
+	{ code: 'FWC15', name: 'Brazil 1994', team: 'FIFA World Cup History', img: '0148.png' },
+	{ code: 'FWC16', name: 'Brazil 2002', team: 'FIFA World Cup History', img: '0149.png' },
+	{ code: 'FWC17', name: 'Italy 2006', team: 'FIFA World Cup History', img: '0797.png' },
+	{ code: 'FWC18', name: 'Germany 2014', team: 'FIFA World Cup History', img: null },
+	{ code: 'FWC19', name: 'Argentina 2022', team: 'FIFA World Cup History', img: null },
+	{ code: 'COC1', name: 'Coca-Cola 1', team: 'Coca-Cola', img: null },
+	{ code: 'COC2', name: 'Coca-Cola 2', team: 'Coca-Cola', img: null },
+	{ code: 'COC3', name: 'Coca-Cola 3', team: 'Coca-Cola', img: null },
+	{ code: 'COC4', name: 'Coca-Cola 4', team: 'Coca-Cola', img: null },
+	{ code: 'COC5', name: 'Coca-Cola 5', team: 'Coca-Cola', img: null },
+	{ code: 'COC6', name: 'Coca-Cola 6', team: 'Coca-Cola', img: null },
+	{ code: 'COC7', name: 'Coca-Cola 7', team: 'Coca-Cola', img: null },
+	{ code: 'COC8', name: 'Coca-Cola 8', team: 'Coca-Cola', img: null },
+	{ code: 'COC9', name: 'Coca-Cola 9', team: 'Coca-Cola', img: null },
+	{ code: 'COC10', name: 'Coca-Cola 10', team: 'Coca-Cola', img: null },
+	{ code: 'COC11', name: 'Coca-Cola 11', team: 'Coca-Cola', img: null },
+	{ code: 'COC12', name: 'Coca-Cola 12', team: 'Coca-Cola', img: null },
+	{ code: 'COC13', name: 'Coca-Cola 13', team: 'Coca-Cola', img: null }
+];
+
 export async function loadCollectionItems(
 	supabase: SupabaseClient,
 	userId: string
@@ -20,11 +47,19 @@ export async function loadCollectionItems(
 	if (stickersError) throw stickersError;
 	if (userError) throw userError;
 
+	const stickerRows = [...(stickers ?? [])];
+	const knownCodes = new Set(stickerRows.map((sticker) => sticker.code));
+	for (const fallback of FALLBACK_SPECIAL_STICKERS) {
+		if (!knownCodes.has(fallback.code)) {
+			stickerRows.push(fallback);
+		}
+	}
+
 	const quantityByCode = new Map(
 		(userStickers ?? []).map((row) => [row.sticker_code, row.quantity])
 	);
 
-	return (stickers ?? []).map((sticker) => ({
+	return stickerRows.map((sticker) => ({
 		...sticker,
 		quantity: quantityByCode.get(sticker.code) ?? 0
 	}));
