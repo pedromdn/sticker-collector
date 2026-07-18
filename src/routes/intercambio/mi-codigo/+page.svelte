@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import QRCode from 'qrcode';
 	import type { PageData } from './$types';
-	import { catalogOrderedCodes } from '$lib/groups';
+	import { figuritasQrSlots } from '$lib/groups';
 	import { encodeFiguritasQr } from '$lib/figuritas';
 
 	let { data }: { data: PageData } = $props();
@@ -15,11 +15,14 @@
 
 	onMount(async () => {
 		try {
-			const orderedCodes = catalogOrderedCodes(data.items);
+			const qrSlots = figuritasQrSlots(data.items);
 			const byCode = new Map(data.items.map((item) => [item.code, item]));
-			const entries = orderedCodes.map((code) => {
-				const item = byCode.get(code)!;
-				return { missing: item.quantity === 0, hasDuplicate: item.quantity >= 2 };
+			const entries = qrSlots.map((code) => {
+				const item = code === null ? undefined : byCode.get(code);
+				return {
+					missing: item?.quantity === 0,
+					hasDuplicate: (item?.quantity ?? 0) >= 2
+				};
 			});
 			qrText = await encodeFiguritasQr(entries);
 			qrDataUrl = await QRCode.toDataURL(qrText, { margin: 1, width: 320 });

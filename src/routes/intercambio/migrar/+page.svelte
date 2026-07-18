@@ -2,10 +2,17 @@
 	import { invalidate } from '$app/navigation';
 	import type { PageData } from './$types';
 	import QrInput from '$lib/components/QrInput.svelte';
-	import { catalogOrderedCodes, getSectionKey, getSectionLabel, SECTION_ORDER } from '$lib/groups';
+	import {
+		figuritasQrSlots,
+		FIGURITAS_BASE_STICKER_COUNT,
+		getSectionKey,
+		getSectionLabel,
+		SECTION_ORDER
+	} from '$lib/groups';
 	import { upsertUserStickers } from '$lib/collectionMutations';
 	import {
 		decodeFiguritasQr,
+		isFiguritasTradeQr,
 		FiguritasFormatError,
 		FiguritasUnsupportedError,
 		FiguritasDecodeError,
@@ -32,7 +39,7 @@
 	let applyError = $state('');
 	let appliedCount = $state(0);
 
-	const orderedCodes = catalogOrderedCodes(data.items);
+	const qrSlots = figuritasQrSlots(data.items);
 
 	function mapError(err: unknown): string {
 		if (err instanceof FiguritasLengthMismatchError) {
@@ -52,8 +59,12 @@
 
 	async function handleScan(text: string) {
 		decodeError = '';
+		if (isFiguritasTradeQr(text)) {
+			decodeError = 'Este es un QR de intercambio. AplÃ­calo desde la pantalla Intercambiar, no desde Migrar.';
+			return;
+		}
 		try {
-			rawDecoded = await decodeFiguritasQr(text, orderedCodes);
+			rawDecoded = await decodeFiguritasQr(text, qrSlots, FIGURITAS_BASE_STICKER_COUNT);
 			step = 'preview';
 		} catch (err) {
 			decodeError = mapError(err);

@@ -66,7 +66,7 @@ export const TEAM_GROUP: Record<string, string> = {
 	Panama: 'L'
 };
 
-export type SectionKey = 'intro' | `group-${(typeof GROUP_ORDER)[number]}` | 'history';
+export type SectionKey = 'intro' | `group-${(typeof GROUP_ORDER)[number]}` | 'history' | 'coca-cola';
 
 // Foil/variant stickers (code ends in "s", e.g. GER10s) display inside
 // their team section, but are still skipped when exporting Figuritas QR codes.
@@ -78,30 +78,31 @@ export function getSectionKey(team: string, code: string): SectionKey {
 	const group = TEAM_GROUP[team];
 	if (group) return `group-${group}` as SectionKey;
 	if (team === 'FIFA World Cup History') return 'history';
+	if (team === 'Coca-Cola') return 'coca-cola';
 	return 'intro';
 }
 
 export function getSectionLabel(key: SectionKey): string {
 	if (key === 'intro') return 'Introducción';
 	if (key === 'history') return 'Historia del Mundial';
+	if (key === 'coca-cola') return 'Coca-Cola';
 	return `Grupo ${key.replace('group-', '')}`;
 }
 
 export const SECTION_ORDER: SectionKey[] = [
 	'intro',
 	...GROUP_ORDER.map((g) => `group-${g}` as SectionKey),
-	'history'
+	'history',
+	'coca-cola'
 ];
 
 // Figuritas stores its collection as two bitsets. Its order differs from the
 // display/seed order here: the eleven historical stickers (FWC9–FWC19) live
 // immediately after FWC8, whereas our catalog displays them at the end.
 //
-// Keep this interoperability order independent of the UI order. That also
-// leaves room for Figuritas' optional Coca-Cola block, which is appended after
-// the 980 base stickers and is intentionally not represented in our catalog
-// yet. Decoders can therefore ignore those trailing bits without shifting any
-// known sticker.
+// Keep this interoperability order independent of the UI order. Figuritas'
+// optional Coca-Cola block follows the 980 base positions. Its first bit is
+// reserved by Figuritas; the 13 known Coca-Cola stickers occupy 981–993.
 const FIGURITAS_INTRO_CODES = ['00', 'FWC1', 'FWC2', 'FWC3', 'FWC4', 'FWC5', 'FWC6', 'FWC7', 'FWC8'];
 const FIGURITAS_HISTORY_CODES = [
 	'FWC9',
@@ -116,6 +117,8 @@ const FIGURITAS_HISTORY_CODES = [
 	'FWC18',
 	'FWC19'
 ];
+const FIGURITAS_COCA_COLA_CODES = Array.from({ length: 13 }, (_, index) => `COC${index + 1}`);
+export const FIGURITAS_BASE_STICKER_COUNT = 980;
 
 // Used to map each base-collection bit position in a Figuritas QR to a
 // sticker code. The optional Coca-Cola positions remain reserved by being
@@ -125,11 +128,25 @@ export function catalogOrderedCodes(items: StickerItem[]): string[] {
 		items.filter((item) => !isSpecialVariant(item.code)).map((item) => [item.code, item])
 	);
 	const orderedSpecialCodes = [...FIGURITAS_INTRO_CODES, ...FIGURITAS_HISTORY_CODES];
-	const specialCodeSet = new Set(orderedSpecialCodes);
+	const nonBaseCodeSet = new Set([...orderedSpecialCodes, ...FIGURITAS_COCA_COLA_CODES]);
 	const knownSpecialCodes = orderedSpecialCodes.filter((code) => byCode.has(code));
 	const remainingCodes = items
-		.filter((item) => !isSpecialVariant(item.code) && !specialCodeSet.has(item.code))
+		.filter((item) => !isSpecialVariant(item.code) && !nonBaseCodeSet.has(item.code))
 		.map((item) => item.code);
 
 	return [...knownSpecialCodes, ...remainingCodes];
+}
+
+// Slot 980 is deliberately null: Figuritas reserves it, but it does not map
+// to a sticker in the observed QR samples. Null slots preserve bit positions
+// while being ignored by migration and trade calculations.
+export function figuritasQrSlots(items: StickerItem[]): Array<string | null> {
+	const knownCodes = new Set(
+		items.filter((item) => !isSpecialVariant(item.code)).map((item) => item.code)
+	);
+	return [
+		...catalogOrderedCodes(items),
+		null,
+		...FIGURITAS_COCA_COLA_CODES.map((code) => (knownCodes.has(code) ? code : null))
+	];
 }

@@ -5,7 +5,7 @@
 	import QRCode from 'qrcode';
 	import QrInput from '$lib/components/QrInput.svelte';
 	import StickerThumb from '$lib/components/StickerThumb.svelte';
-	import { catalogOrderedCodes } from '$lib/groups';
+	import { figuritasQrSlots, FIGURITAS_BASE_STICKER_COUNT } from '$lib/groups';
 	import { upsertUserStickers } from '$lib/collectionMutations';
 	import {
 		decodeFiguritasQr,
@@ -39,7 +39,7 @@
 	let replyQrText = $state('');
 	let replyQrCopied = $state(false);
 
-	const orderedCodes = catalogOrderedCodes(data.items);
+	const qrSlots = figuritasQrSlots(data.items);
 
 	function mapError(err: unknown): string {
 		if (err instanceof FiguritasLengthMismatchError) {
@@ -61,10 +61,14 @@
 		decodeError = '';
 		try {
 			if (isFiguritasTradeQr(text)) {
-				tradeDelta = await decodeFiguritasTradeQr(text, orderedCodes);
+				tradeDelta = await decodeFiguritasTradeQr(
+					text,
+					qrSlots,
+					FIGURITAS_BASE_STICKER_COUNT
+				);
 				step = 'trade-review';
 			} else {
-				rawDecoded = await decodeFiguritasQr(text, orderedCodes);
+				rawDecoded = await decodeFiguritasQr(text, qrSlots, FIGURITAS_BASE_STICKER_COUNT);
 				step = 'review';
 			}
 		} catch (err) {
@@ -167,9 +171,9 @@
 			generatingReplyQr = true;
 			try {
 				replyQrText = await encodeFiguritasTradeQr(
-					orderedCodes.map((code) => ({
-						iGave: gaveCodes.has(code),
-						iReceived: receivedCodes.has(code)
+					qrSlots.map((code) => ({
+						iGave: code !== null && gaveCodes.has(code),
+						iReceived: code !== null && receivedCodes.has(code)
 					}))
 				);
 				replyQrDataUrl = await QRCode.toDataURL(replyQrText, { margin: 1, width: 320 });

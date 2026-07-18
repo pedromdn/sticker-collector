@@ -130,7 +130,8 @@ function setBitAt(bytes: Uint8Array, index: number): void {
  */
 export async function decodeFiguritasQr(
 	raw: string,
-	orderedCodes: string[]
+	orderedCodes: Array<string | null>,
+	minimumBitCount = orderedCodes.length
 ): Promise<FiguritasCollection> {
 	const { segmentA, segmentB } = parseQrEnvelope(raw);
 	const [bytesA, bytesB] = await Promise.all([
@@ -138,18 +139,22 @@ export async function decodeFiguritasQr(
 		gunzip(base64ToBytes(segmentB))
 	]);
 
-	const n = orderedCodes.length;
+	const n = minimumBitCount;
 	const bitsA = bytesA.length * 8;
 	const bitsB = bytesB.length * 8;
 	if (bitsA < n || bitsB < n) {
 		throw new FiguritasLengthMismatchError(n, bitsA, bitsB);
 	}
 
-	const entries = orderedCodes.map((code, i) => ({
-		code,
-		missing: bitAt(bytesA, i),
-		hasDuplicate: bitAt(bytesB, i)
-	}));
+	const availableBits = Math.min(bitsA, bitsB);
+	// A base Figuritas QR has 984 physical bits (980 stickers + padding).
+	// Only read optional slots when the payload is long enough to contain the
+	// full optional block; otherwise its padding bits would look like stickers.
+	const readableBits = availableBits >= orderedCodes.length ? availableBits : minimumBitCount;
+	const entries = orderedCodes.flatMap((code, i) => {
+		if (code === null || i >= readableBits) return [];
+		return [{ code, missing: bitAt(bytesA, i), hasDuplicate: bitAt(bytesB, i) }];
+	});
 
 	return { entries, meta: { segmentABits: bitsA, segmentBBits: bitsB } };
 }
@@ -168,9 +173,10 @@ export type FiguritasTradeDelta = {
  */
 export async function decodeFiguritasTradeQr(
 	raw: string,
-	orderedCodes: string[]
+	orderedCodes: Array<string | null>,
+	minimumBitCount = orderedCodes.length
 ): Promise<FiguritasTradeDelta> {
-	const collection = await decodeFiguritasQr(raw, orderedCodes);
+	const collection = await decodeFiguritasQr(raw, orderedCodes, minimumBitCount);
 	return {
 		entries: collection.entries.map((entry) => ({
 			code: entry.code,

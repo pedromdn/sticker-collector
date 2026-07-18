@@ -53,7 +53,8 @@ const SPECIAL_FLAGS: Record<string, string> = {
 	'We Are Panini': '⭐',
 	'FIFA World Cup 2026': '🏆',
 	'Host Countries and Cities': '🇨🇦🇲🇽🇺🇸',
-	'FIFA World Cup History': '📜'
+	'FIFA World Cup History': '📜',
+	'Coca-Cola': '🥤'
 };
 
 export function getTeamFlag(team: string): string {
