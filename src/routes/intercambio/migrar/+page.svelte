@@ -31,6 +31,11 @@
 		impliedQty: number;
 		newQty: number;
 	};
+	type PreviewSection = {
+		key: string;
+		label: string;
+		rows: DiffRow[];
+	};
 
 	let step = $state<Step>('scan');
 	let rawDecoded = $state<FiguritasCollection | null>(null);
@@ -113,6 +118,23 @@
 		}));
 	});
 
+	let previewSections = $derived.by<PreviewSection[]>(() => {
+		const map = new Map<string, DiffRow[]>();
+		for (const row of changed) {
+			const key = getSectionKey(row.team, row.code);
+			const rows = map.get(key) ?? [];
+			rows.push(row);
+			map.set(key, rows);
+		}
+		return SECTION_ORDER.filter((key) => map.has(key)).map((key) => ({
+			key,
+			label: getSectionLabel(key),
+			rows: map
+				.get(key)!
+				.sort((a, b) => a.team.localeCompare(b.team) || a.code.localeCompare(b.code))
+		}));
+	});
+
 	async function confirmMigration() {
 		const userId = data.user?.id;
 		if (!userId) return;
@@ -188,6 +210,46 @@
 						</li>
 					{/each}
 				</ul>
+			</div>
+		{/if}
+
+		{#if previewSections.length > 0}
+			<div>
+				<h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+					Detalle por sticker
+				</h2>
+				<div class="space-y-4">
+					{#each previewSections as section (section.key)}
+						<div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+							<div class="border-b border-slate-800 px-3 py-2 text-sm font-medium text-slate-200">
+								{section.label}
+							</div>
+							<div class="divide-y divide-slate-800">
+								{#each section.rows as row (row.code)}
+									<div class="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-3 px-3 py-2 text-sm">
+										<div class="min-w-0">
+											<div class="font-mono text-xs text-slate-500">{row.code}</div>
+											<div class="truncate text-slate-200">{row.name}</div>
+											<div class="truncate text-xs text-slate-500">{row.team}</div>
+										</div>
+										<div class="text-right">
+											<div class="text-[11px] uppercase tracking-wide text-slate-500">Actual</div>
+											<div class="font-semibold text-slate-300">{row.currentQty}</div>
+										</div>
+										<div class="text-right">
+											<div class="text-[11px] uppercase tracking-wide text-slate-500">QR</div>
+											<div class="font-semibold text-slate-300">{row.impliedQty}</div>
+										</div>
+										<div class="text-right">
+											<div class="text-[11px] uppercase tracking-wide text-slate-500">Nuevo</div>
+											<div class="font-semibold text-emerald-400">{row.newQty}</div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/each}
+				</div>
 			</div>
 		{/if}
 

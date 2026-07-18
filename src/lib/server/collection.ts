@@ -31,7 +31,8 @@ const FALLBACK_SPECIAL_STICKERS: Array<Omit<StickerItem, 'quantity'>> = [
 	{ code: 'COC10', name: 'Coca-Cola 10', team: 'Coca-Cola', img: null },
 	{ code: 'COC11', name: 'Coca-Cola 11', team: 'Coca-Cola', img: null },
 	{ code: 'COC12', name: 'Coca-Cola 12', team: 'Coca-Cola', img: null },
-	{ code: 'COC13', name: 'Coca-Cola 13', team: 'Coca-Cola', img: null }
+	{ code: 'COC13', name: 'Coca-Cola 13', team: 'Coca-Cola', img: null },
+	{ code: 'COC14', name: 'Coca-Cola 14', team: 'Coca-Cola', img: null }
 ];
 
 export async function loadCollectionItems(

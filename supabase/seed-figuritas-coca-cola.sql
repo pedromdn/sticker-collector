@@ -16,7 +16,8 @@ values
 	('COC10', 'Coca-Cola 10', 'Coca-Cola', null),
 	('COC11', 'Coca-Cola 11', 'Coca-Cola', null),
 	('COC12', 'Coca-Cola 12', 'Coca-Cola', null),
-	('COC13', 'Coca-Cola 13', 'Coca-Cola', null)
+	('COC13', 'Coca-Cola 13', 'Coca-Cola', null),
+	('COC14', 'Coca-Cola 14', 'Coca-Cola', null)
 on conflict (code) do update
 set
 	name = excluded.name,
