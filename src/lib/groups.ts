@@ -93,9 +93,43 @@ export const SECTION_ORDER: SectionKey[] = [
 	'history'
 ];
 
-// Figuritas' checklist (980 stickers) matches this app's catalog order minus
-// the 54 special-variant stickers, which Figuritas doesn't track separately.
-// Used to map each bit position in a decoded Figuritas QR to a sticker code.
+// Figuritas stores its collection as two bitsets. Its order differs from the
+// display/seed order here: the eleven historical stickers (FWC9–FWC19) live
+// immediately after FWC8, whereas our catalog displays them at the end.
+//
+// Keep this interoperability order independent of the UI order. That also
+// leaves room for Figuritas' optional Coca-Cola block, which is appended after
+// the 980 base stickers and is intentionally not represented in our catalog
+// yet. Decoders can therefore ignore those trailing bits without shifting any
+// known sticker.
+const FIGURITAS_INTRO_CODES = ['00', 'FWC1', 'FWC2', 'FWC3', 'FWC4', 'FWC5', 'FWC6', 'FWC7', 'FWC8'];
+const FIGURITAS_HISTORY_CODES = [
+	'FWC9',
+	'FWC10',
+	'FWC11',
+	'FWC12',
+	'FWC13',
+	'FWC14',
+	'FWC15',
+	'FWC16',
+	'FWC17',
+	'FWC18',
+	'FWC19'
+];
+
+// Used to map each base-collection bit position in a Figuritas QR to a
+// sticker code. The optional Coca-Cola positions remain reserved by being
+// outside this list; they are appended by Figuritas after these 980 entries.
 export function catalogOrderedCodes(items: StickerItem[]): string[] {
-	return items.filter((item) => !isSpecialVariant(item.code)).map((item) => item.code);
+	const byCode = new Map(
+		items.filter((item) => !isSpecialVariant(item.code)).map((item) => [item.code, item])
+	);
+	const orderedSpecialCodes = [...FIGURITAS_INTRO_CODES, ...FIGURITAS_HISTORY_CODES];
+	const specialCodeSet = new Set(orderedSpecialCodes);
+	const knownSpecialCodes = orderedSpecialCodes.filter((code) => byCode.has(code));
+	const remainingCodes = items
+		.filter((item) => !isSpecialVariant(item.code) && !specialCodeSet.has(item.code))
+		.map((item) => item.code);
+
+	return [...knownSpecialCodes, ...remainingCodes];
 }
