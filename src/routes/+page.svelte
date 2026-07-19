@@ -171,7 +171,10 @@
 		const q = query.trim().toLowerCase();
 		return items.filter((item) => {
 			const matchesQuery =
-				q === '' || item.name.toLowerCase().includes(q) || item.code.toLowerCase().includes(q);
+				q === '' ||
+				item.name.toLowerCase().includes(q) ||
+				item.code.toLowerCase().includes(q) ||
+				item.team.toLowerCase().includes(q);
 			const matchesStatus =
 				statusFilter === 'all' ||
 				(statusFilter === 'have' && item.groupQuantity > 0) ||
@@ -188,7 +191,11 @@
 		const set = new Set<string>();
 		if (q === '') return set;
 		for (const item of items) {
-			if (item.name.toLowerCase().includes(q) || item.code.toLowerCase().includes(q)) {
+			if (
+				item.name.toLowerCase().includes(q) ||
+				item.code.toLowerCase().includes(q) ||
+				item.team.toLowerCase().includes(q)
+			) {
 				set.add(cardKey(getSectionKey(item.team, item.code), item.team));
 			}
 		}
@@ -247,7 +254,7 @@
 		<input
 			type="search"
 			bind:value={query}
-			placeholder="Buscar por nombre o código…"
+			placeholder="Buscar por nombre, equipo o codigo..."
 			class="w-full rounded-md border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500 sm:flex-1"
 		/>
 		<div class="flex gap-2">

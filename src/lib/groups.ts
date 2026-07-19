@@ -69,10 +69,9 @@ export const TEAM_GROUP: Record<string, string> = {
 
 const TEAM_ALIASES: Record<string, string> = {
 	'Korea Republic': 'South Korea',
-	Turkiye: 'TÃ¼rkiye',
-	'Türkiye': 'TÃ¼rkiye',
-	Curacao: 'CuraÃ§ao',
-	'Curaçao': 'CuraÃ§ao'
+	Turkey: 'Türkiye',
+	Turkiye: 'Türkiye',
+	Curacao: 'Curaçao'
 };
 
 export type SectionKey = 'intro' | `group-${(typeof GROUP_ORDER)[number]}` | 'history' | 'coca-cola';
@@ -84,9 +83,6 @@ export function isSpecialVariant(code: string): boolean {
 }
 
 function normalizeTeamForGroups(team: string): string {
-	if (team === 'Korea Republic') return 'South Korea';
-	if (team === 'Turkiye' || team === 'Türkiye' || team === 'TÃ¼rkiye') return 'TÃ¼rkiye';
-	if (team === 'Curacao' || team === 'Curaçao' || team === 'CuraÃ§ao') return 'CuraÃ§ao';
 	return TEAM_ALIASES[team] ?? team;
 }
 
