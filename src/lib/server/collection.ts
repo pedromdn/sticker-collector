@@ -35,17 +35,34 @@ const FALLBACK_SPECIAL_STICKERS: Array<Omit<StickerItem, 'quantity'>> = [
 	{ code: 'COC14', name: 'Coca-Cola 14', team: 'Coca-Cola', img: null }
 ];
 
+type StickerRow = Omit<StickerItem, 'quantity'>;
+
+async function loadAllStickerRows(supabase: SupabaseClient): Promise<StickerRow[]> {
+	const pageSize = 1000;
+	const rows: StickerRow[] = [];
+
+	for (let from = 0; ; from += pageSize) {
+		const { data, error } = await supabase
+			.from('stickers')
+			.select('code, name, team, img')
+			.order('sort_order')
+			.range(from, from + pageSize - 1);
+
+		if (error) throw error;
+		rows.push(...((data ?? []) as StickerRow[]));
+		if (!data || data.length < pageSize) return rows;
+	}
+}
+
 export async function loadCollectionItems(
 	supabase: SupabaseClient,
 	userId: string
 ): Promise<StickerItem[]> {
-	const [{ data: stickers, error: stickersError }, { data: userStickers, error: userError }] =
-		await Promise.all([
-			supabase.from('stickers').select('code, name, team, img').order('sort_order'),
-			supabase.from('user_stickers').select('sticker_code, quantity').eq('user_id', userId)
-		]);
+	const [stickers, { data: userStickers, error: userError }] = await Promise.all([
+		loadAllStickerRows(supabase),
+		supabase.from('user_stickers').select('sticker_code, quantity').eq('user_id', userId)
+	]);
 
-	if (stickersError) throw stickersError;
 	if (userError) throw userError;
 
 	const stickerRows = [...(stickers ?? [])];
